@@ -115,7 +115,7 @@ cursor_position = (400, 300)
 cursor_instance = Cursor(cursor_position)
 
 #create current hit objects list
-current_hit_objects = ()
+current_hit_objects = []
 
 
 # Start playing the music
@@ -155,30 +155,33 @@ def display_menu(window):
     pygame.display.flip() 
     return song_rects
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time):
     if event.button == 1:  # Check if left mouse button clicked
         mouse_pos = pygame.mouse.get_pos()
         # Use spritecollide to detect collisions between mouse position and hit objects
         clicked_hit_objects = [hit_obj for hit_obj in hit_objects_list if cursor_instance.rect.colliderect(hit_obj.rect)]
         for hit_object in clicked_hit_objects:
-            hit_object.hit()
+            hit_object.hit(hit_time=current_time)
 
 def check_hit_circle(hit_object, event):
     # Check if the mouse click is within the hit circle
     return distance(event.pos, hit_object.position) <= 10
 
 def main_game_logic(hit_objects_list, event):
-    for hit_object in hit_objects_list:
-        if hit_object.visible:
-            hit_object.append(current_hit_objects)
-            if hit_object.type == 'circle':
-                print("hit a circle")
-            elif hit_object.type == 'slider':
-                print("hit a slider")
-            elif hit_object.type == 'spinner':
-                print("why are you hitting a spinner?")
-        else:
-            hit_object.pop(current_hit_objects)
+
+    ## Iterate through hit objects
+    #for hit_object in hit_objects_list:
+    #    if hit_object.visible:
+    #        current_hit_objects.append(hit_object)
+    #        #if hit_object.type == 'circle':
+    #        #    print("Hit a circle")
+    #        #elif hit_object.type == 'slider':
+    #        #    print("Hit a slider")
+    #        #elif hit_object.type == 'spinner':
+    #        #    print("Why are you hitting a spinner?")
+    #    else:
+    #        current_hit_objects.remove(hit_object)  # Remove the hit object from the current objects
+    pass
 
 def get_current_highest_time():
     pass
@@ -217,7 +220,7 @@ def main():
                     running = False
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list)
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
                     main_game_logic(hit_objects_list, event)
 
             current_time = pygame.time.get_ticks()
