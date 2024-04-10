@@ -114,6 +114,9 @@ cursor_position = (400, 300)
 #initiate cursor
 cursor_instance = Cursor(cursor_position)
 
+#create current hit objects list
+current_hit_objects = ()
+
 
 # Start playing the music
 pygame.mixer.music.play()
@@ -167,13 +170,18 @@ def check_hit_circle(hit_object, event):
 def main_game_logic(hit_objects_list, event):
     for hit_object in hit_objects_list:
         if hit_object.visible:
+            hit_object.append(current_hit_objects)
             if hit_object.type == 'circle':
                 print("hit a circle")
             elif hit_object.type == 'slider':
                 print("hit a slider")
             elif hit_object.type == 'spinner':
                 print("why are you hitting a spinner?")
+        else:
+            hit_object.pop(current_hit_objects)
 
+def get_current_highest_time():
+    pass
 
 def main():
     clock = pygame.time.Clock()
@@ -219,7 +227,7 @@ def main():
             cursor_instance.update_position(new_cursor_position)
 
             # Draw the background
-            window.fill((0, 0, 0))
+            window.fill((50, 50, 50))
 
             # do hit objects
             for hit_object in hit_objects_list:

@@ -6,7 +6,10 @@ import json
 cursor_width, cursor_height = 20, 20
 
 class HitObject(Sprite):
-    def __init__(self, position, time, type, hitSound, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None):
+    
+    last_selftime = 0
+
+    def __init__(self, position, time, type, hitSound, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None):
         super().__init__()
         self.image = pygame.Surface((20, 20))
         self.image.fill((255, 255, 255))  # White rectangle representing hit object
@@ -24,12 +27,13 @@ class HitObject(Sprite):
         self.edgeSets = edgeSets
         self.endTime = endTime
         self.visible = False  # Whether the hit object is currently visible
+        self.washit = False
 
 
 
     def update(self, current_time):
         # If the current time is past the hit object's time, make it visible
-        if current_time >= self.time:
+        if current_time >= self.time and self.washit == False:
             self.visible = True
 
         # If the hit object is visible, update its position
@@ -45,12 +49,15 @@ class HitObject(Sprite):
         return (self.position)
     
     def hit(self):
-        print(f'Hit object at {self.time} was hit (may be not visible)')
-        # ... rest of your hit logic ...
+        if self.visible and self.time >= HitObject.last_selftime:
+            print(f'Hit object at {self.time} was hit')
+            self.visible = False
+            self.washit = True
+
 
     def miss(self):
         print(f'Hit object at {self.time} was missed')
-        # ... rest of your miss logic ...
+        # ... rest of miss logic ...
 
 class Beatmap:
     def __init__(self, general, editor, metadata, difficulty, events, timing_points, hit_objects):
