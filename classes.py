@@ -6,13 +6,9 @@ import json
 cursor_width, cursor_height = 20, 20
 
 class HitObject(pygame.sprite.Sprite):
-    APPEARANCE_TIME_BEFORE_HIT = 1000  # Adjust this value as needed
     
-    def __init__(self, position, time, type, hitSound, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
+    def __init__(self, position, time, type, hitSound, ApproachRate, CircleSize, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
         super().__init__()
-        self.image = pygame.Surface((20, 20))
-        self.image.fill((255, 255, 255))  # White rectangle representing hit object
-        self.rect = self.image.get_rect(topleft=position)
         self.position = position
         self.time = time
         self.type = type
@@ -25,9 +21,44 @@ class HitObject(pygame.sprite.Sprite):
         self.edgeSounds = edgeSounds
         self.edgeSets = edgeSets
         self.endTime = endTime
-        self.visible = False  # Whether the hit object is currently visible
+        self.visible = False
         self.washit = False
         self.wasmissed = False
+        self.circle_size = self.calculate_circle_size(CircleSize)
+        self.circle_radius = self.circle_size + 30  # Initial radius of the circle
+        self.APPEARANCE_TIME_BEFORE_HIT = self.calculate_appearance_time(ApproachRate)
+        self.circle_speed = self.calculate_circle_speed()  # Speed at which the circle radius reduces
+        self.image = pygame.Surface((2 * self.circle_radius, 2 * self.circle_radius))
+        self.rect = self.image.get_rect(center=position)
+        
+        
+
+    def calculate_circle_size(self, CircleSize):
+        radius = 54.4 - 4.48 * CircleSize
+        print(radius)
+        return radius
+
+    def calculate_appearance_time(self, ApproachRate):
+        if ApproachRate < 5:
+            return 1200 + 600 * (5 - ApproachRate) / 5
+        elif ApproachRate == 5:
+            return 1200
+        else:
+            return 1200 - 750 * (ApproachRate - 5) / 5
+
+    def calculate_circle_speed(self):
+        # Calculate distance to cover
+        distance_to_cover = self.circle_radius - self.circle_size # - the radius of the hit object
+
+        # Calculate circle speed to cover the distance in the time before hit
+        circle_speed = distance_to_cover / self.APPEARANCE_TIME_BEFORE_HIT
+
+        # Convert circle speed from pixels per millisecond to pixels per frame
+        circle_speed_per_frame = circle_speed * (1000 / 60)
+
+        print("circle speed", circle_speed_per_frame)
+
+        return circle_speed_per_frame
 
     def update(self, current_time):
         # Calculate time difference between current time and hit object's time
@@ -41,16 +72,29 @@ class HitObject(pygame.sprite.Sprite):
         if current_time >= self.time - self.APPEARANCE_TIME_BEFORE_HIT and not self.washit and not self.wasmissed:
             self.visible = True
 
-    def draw(self, window):
+        
+        # Reduce the circle radius if hit object is visible
+        if self.visible:
+            self.circle_radius -= self.circle_speed
+
+    def draw(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
         # If the hit object is visible, draw it on the screen
         if self.visible:
-            pygame.draw.circle(window, (255, 255, 255), self.position, 10)
+            # Calculate the position of the hit object within the window
+            playfield_x = (window.get_width() - OSU_WIDTH) // 2
+            playfield_y = (window.get_height() - OSU_HEIGHT) // 2 + VERTICAL_SHIFT
+            
+            screen_position = (self.position[0] + playfield_x, self.position[1] + playfield_y)
+            pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_size) # Draw hit object
+            pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_radius, 1) # Draw approach circle
+
 
     def hit(self, hit_time):
         if self.visible:
             print(f'Hit object at {self.time} was hit at time {hit_time}')
             self.visible = False
             self.washit = True
+            # ... rest of hit logic ...
             return True  # Return True indicating successful hit
         return False  # Return False indicating miss
 
@@ -138,4 +182,21 @@ class Cursor:
     def update_position(self, new_position):
         self.pos = new_position
         self.rect.topleft = new_position  # Update rect position
-    
+
+
+class Playfield:
+    def __init__(self, base_resolution=(640, 480)):
+        self.base_resolution = base_resolution
+        self.screen_resolution = pygame.display.get_surface().get_size()
+        self.scale_factor_x = self.screen_resolution[0] / self.base_resolution[0]
+        self.scale_factor_y = self.screen_resolution[1] / self.base_resolution[1]
+
+    def to_game_pixels(self, pixels):
+        game_pixels_x = pixels[0] * self.scale_factor_x
+        game_pixels_y = pixels[1] * self.scale_factor_y
+        return int(game_pixels_x), int(game_pixels_y)
+
+    def to_screen_pixels(self, game_pixels):
+        screen_pixels_x = game_pixels[0] / self.scale_factor_x
+        screen_pixels_y = game_pixels[1] / self.scale_factor_y
+        return int(screen_pixels_x), int(screen_pixels_y)

@@ -2,6 +2,7 @@ import pygame
 from classes import *
 import os
 import zipfile
+import math
 
 pygame.init()
 
@@ -88,22 +89,25 @@ def parse_osu_file(filename):
     return general, editor, metadata, difficulty, events, timing_points, hit_objects
 
 # Parse the .osu file
-general, editor, metadata, difficulty, events, timing_points, hit_objects_data = parse_osu_file('beatmap.osz')
+general, editor, metadata, difficulty_data, events, timing_points, hit_objects_data = parse_osu_file('beatmap.osz')
 
 # Initialize Pygame
 pygame.init()
 
 # Set the size of the osu! playfield
-osu_width, osu_height = 512, 384
+OSU_WIDTH, OSU_HEIGHT = 512, 384
+
+# Set the vertical shift of the osu! playfield
+VERTICAL_SHIFT = 8
 
 # Set the size of the window (this can be any size)
-window_width, window_height = 1024, 768
+WINDOW_WIDTH, WINDOW_HEIGHT = 800, 600
 
 # Create a surface for the osu! playfield
-osu_surface = pygame.Surface((osu_width, osu_height))
+osu_surface = pygame.Surface((OSU_WIDTH, OSU_HEIGHT))
 
 # Create the window
-window = pygame.display.set_mode((window_width, window_height))
+window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
 
 # Load the audio file
 pygame.mixer.music.load(os.path.join('beatmaps', general['AudioFilename']))
@@ -117,9 +121,14 @@ cursor_instance = Cursor(cursor_position)
 #create current hit objects list
 current_hit_objects = []
 
-
-# Start playing the music
-pygame.mixer.music.play()
+# Extract variables from difficulty_data
+HPDrainRate = int(difficulty_data['HPDrainRate'])
+CircleSize = int(difficulty_data['CircleSize'])
+OverallDifficulty = int(difficulty_data['OverallDifficulty'])
+ApproachRate = int(difficulty_data['ApproachRate'])
+SliderMultiplier = float(difficulty_data['SliderMultiplier'])
+SliderTickRate = int(difficulty_data['SliderTickRate'])
+print(difficulty_data)
 
 # Create a list to hold the hit objects
 hit_objects_list = []
@@ -132,10 +141,8 @@ for line in hit_objects_data:
     hitSound = int(components[4])
     addition = components[5:]  # The rest of the components are specific to the type of hit object
     position = (x, y)
-    hit_objects_list.append(HitObject(position, time, type, hitSound, addition))
+    hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, addition))
     print(line)
-
-
 
 def display_menu(window):
     window.fill((0, 0, 0))
@@ -158,14 +165,18 @@ def display_menu(window):
 def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time):
     if event.button == 1:  # Check if left mouse button clicked
         mouse_pos = pygame.mouse.get_pos()
-        # Use spritecollide to detect collisions between mouse position and hit objects
-        clicked_hit_objects = [hit_obj for hit_obj in hit_objects_list if cursor_instance.rect.colliderect(hit_obj.rect)]
-        for hit_object in clicked_hit_objects:
-            hit_object.hit(hit_time=current_time)
+        # Iterate through hit objects and check for circular hit detection
+        for hit_object in hit_objects_list:
+            # Calculate the distance between cursor position and hit object center
+            distance_to_hit_object = math.sqrt((hit_object.position[0] - mouse_pos[0])**2 + (hit_object.position[1] - mouse_pos[1])**2)
+            # Check if the distance is less than or equal to the hit object radius
+            if distance_to_hit_object <= hit_object.circle_size:
+                hit_object.hit(hit_time=current_time)  # Call hit method if hit detected
+
 
 def check_hit_circle(hit_object, event):
     # Check if the mouse click is within the hit circle
-    return distance(event.pos, hit_object.position) <= 10
+    return distance(event.pos, hit_object.position) <= cir
 
 def main_game_logic(hit_objects_list, event):
 
@@ -183,17 +194,18 @@ def main_game_logic(hit_objects_list, event):
     #        current_hit_objects.remove(hit_object)  # Remove the hit object from the current objects
     pass
 
-def get_current_highest_time():
-    pass
-
 def main():
     clock = pygame.time.Clock()
     running = False  # Start with menu loop
+    music_playing = False
+    current_time = 0  # Initialize current_time
+    start_time = 0  # Variable to store the time when the game starts running
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
     while True:
         if not running:  # Display menu if not running
+            current_time = 0
             song_rects = display_menu(window)  # Get bounding rectangles and corresponding song texts
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -212,9 +224,18 @@ def main():
                             if pygame.Rect(rect_top_left, (100, 30)).collidepoint(event.pos):  # Use 100x30 as width and height of text
                                 print("Text clicked:", song)
                                 running = True  # Start the game loop for the selected song
+                                start_time = pygame.time.get_ticks()  # Record the start time
 
         else:  # Game loop
+
+            if not music_playing:
+                # Start playing the music
+                pygame.mixer.music.play()
+                music_playing = True
             
+            if current_time and not running:
+                current_time = 0
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -223,24 +244,23 @@ def main():
                     handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
                     main_game_logic(hit_objects_list, event)
 
-            current_time = pygame.time.get_ticks()
+            current_time = pygame.time.get_ticks() - start_time 
 
             #update cursor position
             new_cursor_position = pygame.mouse.get_pos()
             cursor_instance.update_position(new_cursor_position)
 
-            # Draw the background
-            window.fill((50, 50, 50))
+            # Rendering
+            window.fill((0, 0, 0))  # Clear the screen
 
             # do hit objects
             for hit_object in hit_objects_list:
                 hit_object.update(current_time)
-                hit_object.draw(window)
+                hit_object.draw(window, OSU_HEIGHT, OSU_HEIGHT, VERTICAL_SHIFT)
             
             # display current time in ms
             current_time_str = "Current Time: {} ms".format(current_time)
             draw_text(current_time_str, font, TEXT_COL, 50, 50)
-
 
             # Update the display
             pygame.display.flip()
