@@ -7,9 +7,10 @@ cursor_width, cursor_height = 20, 20
 
 class HitObject(pygame.sprite.Sprite):
     
-    def __init__(self, position, time, type, hitSound, ApproachRate, CircleSize, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
+    def __init__(self, position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
         super().__init__()
         self.position = position
+        self.adjusted_position = self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
         self.time = time
         self.type = type
         self.hitSound = hitSound
@@ -29,7 +30,7 @@ class HitObject(pygame.sprite.Sprite):
         self.APPEARANCE_TIME_BEFORE_HIT = self.calculate_appearance_time(ApproachRate)
         self.circle_speed = self.calculate_circle_speed()  # Speed at which the circle radius reduces
         self.image = pygame.Surface((2 * self.circle_radius, 2 * self.circle_radius))
-        self.rect = self.image.get_rect(center=position)
+        self.rect = self.image.get_rect(center=self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT))
         
         
 
@@ -60,6 +61,9 @@ class HitObject(pygame.sprite.Sprite):
 
         return circle_speed_per_frame
 
+    def recalculate_adjusted_position(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
+        self.adjusted_position = self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
+
     def update(self, current_time):
         # Calculate time difference between current time and hit object's time
         time_diff = self.time - current_time
@@ -80,13 +84,21 @@ class HitObject(pygame.sprite.Sprite):
     def draw(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
         # If the hit object is visible, draw it on the screen
         if self.visible:
-            # Calculate the position of the hit object within the window
-            playfield_x = (window.get_width() - OSU_WIDTH) // 2
-            playfield_y = (window.get_height() - OSU_HEIGHT) // 2 + VERTICAL_SHIFT
-            
-            screen_position = (self.position[0] + playfield_x, self.position[1] + playfield_y)
+            screen_position = self.adjusted_position
             pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_size) # Draw hit object
             pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_radius, 1) # Draw approach circle
+            pygame.draw.circle(window, (200, 200, 200), pygame.mouse.get_pos(), 5)
+
+    def get_screen_position(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
+        # Calculate the position of the hit object within the window
+        width, height = window.get_size()
+        extra = ((width // 2) - (OSU_WIDTH // 2), (height // 2) - (OSU_HEIGHT // 2))
+        
+        #screen_position = (self.position[0] + playfield_x, self.position[1] + playfield_y) # old, dont use anymore
+        screen_position = (self.position[0] + extra[0], self.position[1] + extra[1]) 
+
+        return screen_position
+
 
 
     def hit(self, hit_time):
@@ -181,15 +193,16 @@ class Cursor:
 
     def update_position(self, new_position):
         self.pos = new_position
-        self.rect.topleft = new_position  # Update rect position
+        self.rect.center = new_position  # Update rect position
 
 
-class Playfield:
+class Playfield: #not in use
     def __init__(self, base_resolution=(640, 480)):
         self.base_resolution = base_resolution
         self.screen_resolution = pygame.display.get_surface().get_size()
         self.scale_factor_x = self.screen_resolution[0] / self.base_resolution[0]
         self.scale_factor_y = self.screen_resolution[1] / self.base_resolution[1]
+        print("scale factor x: ", self.scale_factor_x, "scale factor y: ", self.scale_factor_y)
 
     def to_game_pixels(self, pixels):
         game_pixels_x = pixels[0] * self.scale_factor_x

@@ -109,6 +109,9 @@ osu_surface = pygame.Surface((OSU_WIDTH, OSU_HEIGHT))
 # Create the window
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE)
 
+# initialize playfield
+#playfield_instance = Playfield()
+
 # Load the audio file
 pygame.mixer.music.load(os.path.join('beatmaps', general['AudioFilename']))
 
@@ -141,7 +144,7 @@ for line in hit_objects_data:
     hitSound = int(components[4])
     addition = components[5:]  # The rest of the components are specific to the type of hit object
     position = (x, y)
-    hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, addition))
+    hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition))
     print(line)
 
 def display_menu(window):
@@ -167,19 +170,26 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time):
         mouse_pos = pygame.mouse.get_pos()
         # Iterate through hit objects and check for circular hit detection
         for hit_object in hit_objects_list:
-            # Calculate the distance between cursor position and hit object center
-            distance_to_hit_object = math.sqrt((hit_object.position[0] - mouse_pos[0])**2 + (hit_object.position[1] - mouse_pos[1])**2)
-            # Check if the distance is less than or equal to the hit object radius
-            if distance_to_hit_object <= hit_object.circle_size:
-                hit_object.hit(hit_time=current_time)  # Call hit method if hit detected
+            if hit_object.visible:
+                # Calculate the distance between the cursor and the center of the hit object
+                distance = check_hit_circle(hit_object)
+                # Check if the distance is less than or equal to the hit object radius
+                if distance <= hit_object.circle_size:
+                    hit_object.hit(hit_time=current_time)
+                else:
+                    print(distance)
 
 
-def check_hit_circle(hit_object, event):
+def check_hit_circle(hit_object):
     # Check if the mouse click is within the hit circle
-    return distance(event.pos, hit_object.position) <= cir
+    distance_from_center = distance(pygame.mouse.get_pos(), hit_object.adjusted_position)
+    return distance_from_center
+
+def distance(point1, point2):
+    return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
 def main_game_logic(hit_objects_list, event):
-
+    pass
     ## Iterate through hit objects
     #for hit_object in hit_objects_list:
     #    if hit_object.visible:
@@ -192,7 +202,11 @@ def main_game_logic(hit_objects_list, event):
     #        #    print("Why are you hitting a spinner?")
     #    else:
     #        current_hit_objects.remove(hit_object)  # Remove the hit object from the current objects
-    pass
+
+def recalculate_adjusted_position():
+    print("rezized the window")
+    for hit_object in hit_objects_list:
+        hit_object.recalculate_adjusted_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
 
 def main():
     clock = pygame.time.Clock()
@@ -225,6 +239,8 @@ def main():
                                 print("Text clicked:", song)
                                 running = True  # Start the game loop for the selected song
                                 start_time = pygame.time.get_ticks()  # Record the start time
+                elif event.type == pygame.VIDEORESIZE:
+                    recalculate_adjusted_position()
 
         else:  # Game loop
 
