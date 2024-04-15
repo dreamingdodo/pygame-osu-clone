@@ -146,6 +146,7 @@ for line in hit_objects_data:
     position = (x, y)
     hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition))
     print(line)
+    
 
 def display_menu(window):
     window.fill((0, 0, 0))
@@ -165,19 +166,53 @@ def display_menu(window):
     pygame.display.flip() 
     return song_rects
 
+def display_keybindings_menu(window):
+    window.fill((0, 0, 0))
+    
+    draw_text("Select a Keybinding:", font, TEXT_COL, 50, 50)
+
+    keybindings = list(settings.keys())  # Get a list of all keybindings
+
+    keybinding_rects = {}  # Dictionary to store bounding rectangles of keybinding texts
+
+    menu_y = 100
+    for index, keybinding in enumerate(settings):
+        text_rect = draw_text(keybinding, font, TEXT_COL, 50, menu_y)
+        keybinding_rects[text_rect.topleft] = keybinding  # Store the top-left corner of the bounding rectangle and corresponding keybinding text
+        menu_y += 40
+
+    pygame.display.flip() 
+    return keybinding_rects
+
+
 def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time):
-    if event.button == 1:  # Check if left mouse button clicked
-        mouse_pos = pygame.mouse.get_pos()
-        # Iterate through hit objects and check for circular hit detection
-        for hit_object in hit_objects_list:
-            if hit_object.visible:
-                # Calculate the distance between the cursor and the center of the hit object
-                distance = check_hit_circle(hit_object)
-                # Check if the distance is less than or equal to the hit object radius
-                if distance <= hit_object.circle_size:
-                    hit_object.hit(hit_time=current_time)
-                else:
-                    print(distance)
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
+            mouse_pos = pygame.mouse.get_pos()
+            # Iterate through hit objects and check for circular hit detection
+            for hit_object in hit_objects_list:
+                if hit_object.visible:
+                    # Calculate the distance between the cursor and the center of the hit object
+                    distance = check_hit_circle(hit_object)
+                    # Check if the distance is less than or equal to the hit object radius
+                    if distance <= hit_object.circle_size:
+                        hit_object.hit(hit_time=current_time)
+                    else:
+                        print(distance)
+    elif event.type == pygame.KEYDOWN:
+        if event.key == settings['left_click'] or event.key == settings['right_click']:
+            mouse_pos = pygame.mouse.get_pos()
+            # Iterate through hit objects and check for circular hit detection
+            for hit_object in hit_objects_list:
+                if hit_object.visible:
+                    # Calculate the distance between the cursor and the center of the hit object
+                    distance = check_hit_circle(hit_object)
+                    # Check if the distance is less than or equal to the hit object radius
+                    if distance <= hit_object.circle_size:
+                        hit_object.hit(hit_time=current_time)
+                    else:
+                        print(distance)
+            
 
 
 def check_hit_circle(hit_object):
@@ -208,12 +243,33 @@ def recalculate_adjusted_position():
     for hit_object in hit_objects_list:
         hit_object.recalculate_adjusted_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
 
+# Initialize settings with default keybindings
+settings = {
+    'left_click': pygame.MOUSEBUTTONDOWN,
+    'right_click': pygame.MOUSEBUTTONDOWN,
+}
+
+def change_keybinding(key_binding):
+    print(f"Press a key to set the new keybinding for {key_binding}")
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                settings[key_binding] = event.key  # Update the keybinding in the settings
+                print(f"Keybinding for {key_binding} has been changed to {event.key}")
+                return
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                settings[key_binding] = event.button
+                print(f"Keybinding for {key_binding} has been changed to {event.button}")
+                return
+
+
 def main():
     clock = pygame.time.Clock()
     running = False  # Start with menu loop
     music_playing = False
     current_time = 0  # Initialize current_time
     start_time = 0  # Variable to store the time when the game starts running
+    exit_settings = False
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -231,6 +287,24 @@ def main():
                         return  # Exit program if ESC pressed
                     elif event.key == pygame.K_RETURN:  # Start the game loop when Enter is pressed
                         running = True
+                    elif event.key == pygame.K_o:
+                        while True:
+                            keybinding_rects = display_keybindings_menu(window)  # Display the keybindings menu
+                            for settings_event in pygame.event.get():  # Fetch new events
+                                if settings_event.type == pygame.KEYDOWN:
+                                    if settings_event.key == pygame.K_ESCAPE:
+                                        exit_settings = True  # Set the flag to True when you want to exit
+                                        break
+                                elif settings_event.type == pygame.MOUSEBUTTONDOWN:
+                                    if settings_event.button == 1:  # Check if left mouse button clicked
+                                        # Check if mouse click is within the bounding rectangle of any keybinding text
+                                        for rect_top_left, keybinding in keybinding_rects.items():
+                                            if pygame.Rect(rect_top_left, (100, 30)).collidepoint(settings_event.pos):  # Use 100x30 as width and height of text
+                                                print("Keybinding selected:", keybinding)
+                                                change_keybinding(keybinding)  # Change the selected keybinding
+                            if exit_settings:  # Check the flag after the inner loop
+                                break  # If the flag is True, break the outer loop
+
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Check if left mouse button clicked
                         # Check if mouse click is within the bounding rectangle of any song text
@@ -256,7 +330,7 @@ def main():
                 if event.type == pygame.QUIT:
                     running = False
 
-                elif event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == settings['right_click'] or settings['left_click']:
                     handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
                     main_game_logic(hit_objects_list, event)
 
