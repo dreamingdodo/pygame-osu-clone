@@ -1,6 +1,9 @@
 import pygame
 from pygame.sprite import Sprite, Group
 import json
+import numpy as np
+import math
+
 
 # Set cursor dimensions
 cursor_width, cursor_height = 20, 20
@@ -31,12 +34,13 @@ class HitObject(pygame.sprite.Sprite):
         self.circle_speed = self.calculate_circle_speed()  # Speed at which the circle radius reduces
         self.image = pygame.Surface((2 * self.circle_radius, 2 * self.circle_radius))
         self.rect = self.image.get_rect(center=self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT))
+        self.has_spinner = False
         
         
 
     def calculate_circle_size(self, CircleSize):
         radius = 54.4 - 4.48 * CircleSize
-        print(radius)
+        print("circle radius: ", radius)
         return radius
 
     def calculate_appearance_time(self, ApproachRate):
@@ -107,8 +111,8 @@ class HitObject(pygame.sprite.Sprite):
             self.visible = False
             self.washit = True
             # ... rest of hit logic ...
-            return True  # Return True indicating successful hit
-        return False  # Return False indicating miss
+            return True
+        return False
 
     def miss(self):
         if self.visible:
@@ -116,9 +120,41 @@ class HitObject(pygame.sprite.Sprite):
             self.visible = False
             self.wasmissed = True
             # ... rest of miss logic ...
-            return True  # Return True indicating missed
-        return False  # Return False indicating already missed
+            return True
+        return False
 
+class Spinner(HitObject):
+    def __init__(self, hit_object, initial_pos, current_pos, endtime):
+        self.__dict__ = hit_object.__dict__.copy()  # Copy attributes from hit_object
+        self.initial_pos = initial_pos
+        self.current_pos = current_pos
+        self.endtime = endtime
+        
+
+    def calculate_angular_velocity(self, CENTER, current_pos, dt):
+
+        # Calculate the initial angle
+        initial_angle = math.atan2(self.initial_pos[1] - CENTER[1], self.initial_pos[0] - CENTER[0])
+
+        # Calculate the new angle
+        new_angle = math.atan2(current_pos[1] - CENTER[1], current_pos[0] - CENTER[0])
+
+        # Calculate the change in angle
+        d_angle = new_angle - initial_angle
+
+        angle_threshold = 0.01 # Angel thershold
+
+        if abs(d_angle) < angle_threshold:
+            angular_velocity = 0
+        else:
+            angular_velocity = d_angle / dt
+
+        # Make all rotations positive
+        angular_velocity = abs(angular_velocity)
+
+        initial_pos = current_pos
+
+        return (angular_velocity, initial_pos)
 
 class Beatmap:
     def __init__(self, general, editor, metadata, difficulty, events, timing_points, hit_objects):

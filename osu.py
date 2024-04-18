@@ -18,6 +18,10 @@ def draw_text(text, font, text_col, x, y):
   window.blit(img, (x, y))
   return img_rect
 
+def get_bit(value, bit_index):
+    mask = 1 << bit_index  # Create a mask for the bit index
+    return (value & mask) >> bit_index  # Use bitwise AND to get the bit at the index, then shift it back to the right
+
 def load_textures():
     # Load hit circle texture
     hit_circle_texture = pygame.image.load("assets/hitcircle.png").convert_alpha()
@@ -118,11 +122,21 @@ pygame.mixer.music.load(os.path.join('beatmaps', general['AudioFilename']))
 # initial cursor position
 cursor_position = (400, 300)  
 
+# calc center of screen
+CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
+
 #initiate cursor
 cursor_instance = Cursor(cursor_position)
 
 #create current hit objects list
 current_hit_objects = []
+
+# Create spinner list
+spinner_list = []
+
+# Create spinner list that holds the respective hit_objects
+hit_spinner_list = []
+
 
 # Extract variables from difficulty_data
 HPDrainRate = int(difficulty_data['HPDrainRate'])
@@ -220,23 +234,67 @@ def check_hit_circle(hit_object):
     distance_from_center = distance(pygame.mouse.get_pos(), hit_object.adjusted_position)
     return distance_from_center
 
+# Function to calculate angle
+def calculate_angle(CENTER, current, initial):
+    d1 = (initial[0]-center[0], initial[1]-center[1])
+    d2 = (current[0]-center[0], current[1]-center[1])
+    return math.atan2(d1[0]*d2[1] - d1[1]*d2[0], d1[0]*d2[0] + d1[1]*d2[1])
+
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event):
-    pass
-    ## Iterate through hit objects
-    #for hit_object in hit_objects_list:
-    #    if hit_object.visible:
-    #        current_hit_objects.append(hit_object)
-    #        #if hit_object.type == 'circle':
-    #        #    print("Hit a circle")
-    #        #elif hit_object.type == 'slider':
-    #        #    print("Hit a slider")
-    #        #elif hit_object.type == 'spinner':
-    #        #    print("Why are you hitting a spinner?")
-    #    else:
-    #        current_hit_objects.remove(hit_object)  # Remove the hit object from the current objects
+def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt):
+    for hit_object in hit_objects_list:
+        if hit_object.visible:
+            for bit_index in range(8):
+                bit_value = get_bit(hit_object.type, bit_index)
+                if bit_value == 1:
+                    if bit_index == 0: #hit circle
+                        pass
+                    elif bit_index == 1: #slider
+                        pass
+                    elif bit_index == 2: #new combo
+                        pass
+                    elif bit_index == 3: #spinner
+                        if not hit_object.has_spinner:
+                            endtime = hit_object.addition[0]
+                            print("endtime: ", endtime)
+                            if hit_object.addition[1:]:
+                                hitsample = hit_object.addition[1]
+                            spinner = Spinner(hit_object, pygame.mouse.get_pos(), pygame.mouse.get_pos(), endtime)
+                            hit_object.has_spinner = True
+                            hit_spinner_list.append(hit_object)
+                            spinner_list.append(spinner)
+                            print("added spinner to list")
+                    elif bit_index == 4: #color hax
+                        pass
+                    elif bit_index == 5: #color hax
+                        pass
+                    elif bit_index == 6: #color hax
+                        pass
+                    elif bit_index == 7: #mania hold
+                        pass
+
+    for spinner in spinner_list:
+        #print("Spinner Time: {spinner.time}, End Time: {spinner.endtime}, Current Time: {current_time}")
+        if spinner.time <= current_time:
+            if int(spinner.endtime) >= current_time:
+                pygame.draw.circle(window, (255, 255, 255), CENTER, 50)
+                if spinner.initial_pos == (0,0):
+                    print("got new pos for initial")
+                    spinner.initial_pos = pygame.mouse.get_pos()
+                current_pos = pygame.mouse.get_pos()
+                angular_velocity_return =  spinner.calculate_angular_velocity(CENTER, current_pos, dt)
+                angular_velocity = angular_velocity_return[0]
+                spinner.initial_pos = angular_velocity_return[1]
+                print(angular_velocity_return)
+                draw_text(str(angular_velocity), font, TEXT_COL, 100, 100)
+            else:
+                spinner_list.remove(spinner)
+                initial_pos = (0, 0)
+                print("removed spinner")
+
+                
 
 def recalculate_adjusted_position():
     print("rezized the window")
@@ -270,6 +328,7 @@ def main():
     current_time = 0  # Initialize current_time
     start_time = 0  # Variable to store the time when the game starts running
     exit_settings = False
+    initial_pos = (0, 0)
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -318,6 +377,8 @@ def main():
 
         else:  # Game loop
 
+            dt = 1 / clock.get_fps()
+
             if not music_playing:
                 # Start playing the music
                 pygame.mixer.music.play()
@@ -326,15 +387,7 @@ def main():
             if current_time and not running:
                 current_time = 0
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-                elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
-                    main_game_logic(hit_objects_list, event)
-
-            current_time = pygame.time.get_ticks() - start_time 
+            current_time = pygame.time.get_ticks() - start_time
 
             #update cursor position
             new_cursor_position = pygame.mouse.get_pos()
@@ -342,6 +395,16 @@ def main():
 
             # Rendering
             window.fill((0, 0, 0))  # Clear the screen
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+
+                elif event.type == settings['right_click'] or settings['left_click']:
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
+            
+            
+            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt)
 
             # do hit objects
             for hit_object in hit_objects_list:
