@@ -3,10 +3,45 @@ from pygame.sprite import Sprite, Group
 import json
 import numpy as np
 import math
+import bisect
 
 
 # Set cursor dimensions
 cursor_width, cursor_height = 20, 20
+
+# Store calculated curves in a dictionary
+calculated_curves = {}
+
+def bezier_curve(control_points, num_points=100):
+    # Convert control_points to a hashable type to use as a dictionary key
+    control_points_tuple = tuple(map(tuple, control_points))
+
+    # If the curve has already been calculated, return it
+    if control_points_tuple in calculated_curves:
+        return calculated_curves[control_points_tuple]
+
+    t = np.linspace(0, 1, num_points)
+    n = len(control_points) - 1
+    curve_points = []
+
+    for t_i in t:
+        point = np.zeros(2)
+        for i, control_point in enumerate(control_points):
+            binomial_coeff = np.math.comb(n, i)
+            point += binomial_coeff * ((1 - t_i)**(n - i)) * (t_i**i) * np.array(control_point)
+        curve_points.append(point)
+
+    # Store the calculated curve in the dictionary
+    calculated_curves[control_points_tuple] = curve_points
+
+    return curve_points
+
+def draw_bezier_curve(window, control_points, color=(255, 255, 255)):
+    curve_points = bezier_curve(control_points)
+    for i in range(len(curve_points) - 1):
+        pygame.draw.line(window, color, curve_points[i], curve_points[i+1])
+
+
 
 class HitObject(pygame.sprite.Sprite):
     
@@ -35,6 +70,7 @@ class HitObject(pygame.sprite.Sprite):
         self.image = pygame.Surface((2 * self.circle_radius, 2 * self.circle_radius))
         self.rect = self.image.get_rect(center=self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT))
         self.has_spinner = False
+        self.has_slider = False
         
         
 
@@ -156,6 +192,44 @@ class Spinner(HitObject):
 
         return (angular_velocity, initial_pos)
 
+
+class Slider(HitObject):
+    def __init__(self, hit_object, curve_type, slides, length, edge_sounds, edge_sets, curve_points):
+        self.__dict__ = hit_object.__dict__.copy()  # Copy attributes from hit_object
+        self.curve_type = curve_type
+        self.slides = slides
+        self.length = length
+        self.edge_sounds = edge_sounds
+        self.edge_sets = edge_sets
+        self.curve_points = curve_points
+
+    def calculate_slider_endtime(self, current_timing_point, SliderMultiplier):
+        print(current_timing_point)
+        if current_timing_point.uninherited == 0:
+            # a negative inverse slider velocity multiplier, as a percentage
+            SV = 100 / -int(current_timing_point.beatLength)
+            print("slide velocity multiplier: ", SV)
+        else:
+            SV = 1
+        endtime = float(self.length) / (SliderMultiplier * 100 * SV) * float(current_timing_point.beatLength) #length / (SliderMultiplier * 100 * SV) * beatLength
+        return endtime
+
+    def draw_slider(self, window):
+        if self.curve_type == "B":   # bézier
+            draw_bezier_curve(window, self.curve_points)
+        elif self.curve.type == "C": # centripetal catmull-rom
+            pass
+        elif self.curve.type == "L": # Linear
+            pass
+        elif self.curve.type == "P": # Perfect circle
+            pass
+
+    def is_hit(self, x, y):
+        pass
+
+    def update(self, dt):
+        pass
+
 class Beatmap:
     def __init__(self, general, editor, metadata, difficulty, events, timing_points, hit_objects):
         self.general = general
@@ -249,3 +323,24 @@ class Playfield: #not in use
         screen_pixels_x = game_pixels[0] / self.scale_factor_x
         screen_pixels_y = game_pixels[1] / self.scale_factor_y
         return int(screen_pixels_x), int(screen_pixels_y)
+
+class TimingPoints:
+    def __init__(self, time, beatLength, meter, sampleSet, sampleIndex, volume, uninherited, effects):
+        self.time = time
+        self.beatLength = beatLength
+        self.meter = meter
+        self.sampleSet = sampleSet
+        self.sampleIndex = sampleIndex
+        self.volume = volume
+        self.uninherited = uninherited
+        self.effects = effects
+    
+    def get_current_timing_point(current_time, timing_points_list):
+        # Use bisect to find the insertion point for current_time in the timing_points_list
+        index = bisect.bisect([tp.time for tp in timing_points_list], current_time)
+
+        # Otherwise, the timing point at index - 1 is the one with the highest time still less than current_time
+        return timing_points_list[index - 1]
+        
+
+

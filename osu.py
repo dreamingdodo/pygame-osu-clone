@@ -3,6 +3,7 @@ from classes import *
 import os
 import zipfile
 import math
+import bisect
 
 pygame.init()
 
@@ -131,11 +132,17 @@ cursor_instance = Cursor(cursor_position)
 #create current hit objects list
 current_hit_objects = []
 
-# Create spinner list
+# Spinner list
 spinner_list = []
 
 # Create spinner list that holds the respective hit_objects
 hit_spinner_list = []
+
+# Slider list
+slider_list = []
+
+# Create slider list that holds the respective hit_objects
+hit_slider_list = []
 
 
 # Extract variables from difficulty_data
@@ -146,6 +153,24 @@ ApproachRate = int(difficulty_data['ApproachRate'])
 SliderMultiplier = float(difficulty_data['SliderMultiplier'])
 SliderTickRate = int(difficulty_data['SliderTickRate'])
 print(difficulty_data)
+
+# Extract a list of timing_points
+timing_points_list = []
+for line in timing_points:
+    components = line.split(',')
+    time = float(components[0])
+    beatLength = components[1]
+    meter = components[2]
+    sampleSet = components[3]
+    sampleIndex = components[4]
+    volume = components[5]
+    uninherited = components[6]
+    effects = components[7]
+    timing_points_list.append(TimingPoints(time, beatLength, meter, sampleSet, sampleIndex, volume, uninherited, effects))
+    print("timing point line: ",line)
+
+# Sort the list of the timing points according to self.time
+timing_points_list.sort(key=lambda TimingPoints: TimingPoints.time)
 
 # Create a list to hold the hit objects
 hit_objects_list = []
@@ -243,7 +268,7 @@ def calculate_angle(CENTER, current, initial):
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt):
+def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point):
     for hit_object in hit_objects_list:
         if hit_object.visible:
             for bit_index in range(8):
@@ -251,8 +276,26 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt):
                 if bit_value == 1:
                     if bit_index == 0: #hit circle
                         pass
+                        #already done i think
                     elif bit_index == 1: #slider
-                        pass
+                        if not hit_object.has_slider:
+                            # Get the curve points and curve type
+                            curve_points_curve_type = hit_object.addition[0]
+                            parts = curve_points_curve_type.split('|')
+                            curve_type = parts[0]
+                            curve_points = [tuple(map(int, part.split(':'))) for part in parts[1:]]
+                            # Get all other attributes
+                            slides = hit_object.addition[1] # Repeat count plus one
+                            length = hit_object.addition[2]
+                            edge_sounds = hit_object.addition[3] if len(hit_object.addition) > 3 else "None"
+                            edge_sets = hit_object.addition[4].split('|') if len(hit_object.addition) > 4 else ["0:0:0:0:"]
+                            print("curve type:", curve_type, "slides:", slides, "length:", length, "edge sounds:", edge_sounds, "edge sets:", edge_sets,"curve points:", curve_points)
+                            slider = Slider(hit_object, curve_type, slides, length, edge_sounds, edge_sets, curve_points)
+                            hit_object.has_slider = True
+                            hit_slider_list.append(hit_object)
+                            slider_list.append(slider)
+                            print("added slider to list")
+                            print(slider.curve_type)
                     elif bit_index == 2: #new combo
                         pass
                     elif bit_index == 3: #spinner
@@ -293,6 +336,14 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt):
                 spinner_list.remove(spinner)
                 initial_pos = (0, 0)
                 print("removed spinner")
+    
+    for slider in slider_list:
+        if slider.calculate_slider_endtime(current_timing_point, SliderMultiplier) >= current_time:
+            slider_list.remove(slider)
+        else:
+            if slider.time <= current_time:
+                slider.draw_slider(window)
+                slider.update(dt)
 
                 
 
@@ -393,6 +444,9 @@ def main():
             new_cursor_position = pygame.mouse.get_pos()
             cursor_instance.update_position(new_cursor_position)
 
+            # Update the current timing point
+            current_timing_point = TimingPoints.get_current_timing_point(current_time, timing_points_list)
+
             # Rendering
             window.fill((0, 0, 0))  # Clear the screen
 
@@ -404,7 +458,7 @@ def main():
                     handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
             
             
-            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt)
+            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point)
 
             # do hit objects
             for hit_object in hit_objects_list:
