@@ -4,43 +4,92 @@ import json
 import numpy as np
 import math
 import bisect
+import sys
 
 
 # Set cursor dimensions
 cursor_width, cursor_height = 20, 20
 
-# Store calculated curves in a dictionary
-calculated_curves = {}
 
-def bezier_curve(control_points, num_points=100):
-    # Convert control_points to a hashable type to use as a dictionary key
-    control_points_tuple = tuple(map(tuple, control_points))
+# AI assisted code start
+def draw_bezier_curve(screen, control_points):
+    control_points_array = np.array(control_points, dtype=float)
+    # Function to calculate Bezier curve
+    def bezier(t, points):
+        n = len(points)
+        if n == 1:
+            return points[0]
+        else:
+            return (1-t)*bezier(t, points[:-1]) + t*bezier(t, points[1:])
 
-    # If the curve has already been calculated, return it
-    if control_points_tuple in calculated_curves:
-        return calculated_curves[control_points_tuple]
+    # Draw the Bezier curve
+    for t in np.linspace(0, 1, 100):
+        point = bezier(t, control_points_array)
+        pygame.draw.circle(screen, (255, 0, 0), point.astype(int), 2)
 
-    t = np.linspace(0, 1, num_points)
-    n = len(control_points) - 1
-    curve_points = []
+    # Draw the control points
+    for point in control_points_array:
+        pygame.draw.circle(screen, (255, 255, 255), point.astype(int), 5)
 
-    for t_i in t:
-        point = np.zeros(2)
-        for i, control_point in enumerate(control_points):
-            binomial_coeff = np.math.comb(n, i)
-            point += binomial_coeff * ((1 - t_i)**(n - i)) * (t_i**i) * np.array(control_point)
-        curve_points.append(point)
+# AI assist end
 
-    # Store the calculated curve in the dictionary
-    calculated_curves[control_points_tuple] = curve_points
+def draw_line(screen, points, color=(255, 255, 255)):
+    pygame.draw.lines(screen, color, False, points)
 
-    return curve_points
+def catmull_rom_one_point(x, *points):
+    n = len(points) - 1
+    c = np.empty(n * 4)
 
-def draw_bezier_curve(window, control_points, color=(255, 255, 255)):
-    curve_points = bezier_curve(control_points)
-    for i in range(len(curve_points) - 1):
-        pygame.draw.line(window, color, curve_points[i], curve_points[i+1])
+    for i in range(n):
+        p0, p1, p2, p3 = points[i:i + 4]
+        c[i*4:i*4+4] = [
+            0.5 * (-p0 + 3 * p1 - 3 * p2 + p3),
+            p0 - 2.5 * p1 + 2 * p2 - 0.5 * p3,
+            0.5 * (-p0 + p2),
+            2 * p1
+        ]
 
+    return sum(c[i] * x ** i for i in range(4))
+
+def catmull_rom(points, res):
+    points = [points[0]] + list(points) + [points[-1]]  # Duplicate first and last points
+    num_segments = len(points) - 3
+    x_intpol = np.empty(res * num_segments + 1)
+    y_intpol = np.empty(res * num_segments + 1)
+    x_intpol[-1] = points[-1][0]
+    y_intpol[-1] = points[-1][1]
+
+    for i in range(num_segments):
+        p0, p1, p2, p3 = points[i:i + 4]
+        x_intpol[i*res:(i+1)*res] = np.linspace(p1[0], p2[0], res, endpoint=False)
+        y_intpol[i*res:(i+1)*res] = [catmull_rom_one_point(x, p0[1], p1[1], p2[1], p3[1]) for x in np.linspace(0., 1., res, endpoint=False)]
+
+    return list(zip(x_intpol, y_intpol))
+
+def draw_spline(screen, points, color=(255, 255, 255)):
+    for i in range(len(points) - 1):
+        pygame.draw.line(screen, color, points[i], points[i+1])
+
+
+def calculate_circle(points):
+    # Unpack the points
+    (x1, y1), (x2, y2), (x3, y3) = points
+
+    # Calculate the determinant of the matrix
+    D = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
+
+    # Calculate the center of the circle
+    Ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / D
+    Uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / D
+
+    # Calculate the radius of the circle
+    r = np.sqrt((x1 - Ux)**2 + (y1 - Uy)**2)
+
+    return (Ux, Uy, r)
+
+def draw_cricle(window, curve_points):
+    center_x, center_y, radius = calculate_circle(curve_points)
+    pygame.draw.circle(window, (255, 255, 255), (center_x, center_y), radius)
 
 
 class HitObject(pygame.sprite.Sprite):
@@ -202,9 +251,11 @@ class Slider(HitObject):
         self.edge_sounds = edge_sounds
         self.edge_sets = edge_sets
         self.curve_points = curve_points
+        if self.curve_type == "C":
+            self.spline_points = catmull_rom(self.curve_points, 50)
 
-    def calculate_slider_endtime(self, current_timing_point, SliderMultiplier):
-        print(current_timing_point)
+
+    def calculate_slider_endtime(self, current_timing_point, SliderMultiplier, current_time):
         if current_timing_point.uninherited == 0:
             # a negative inverse slider velocity multiplier, as a percentage
             SV = 100 / -int(current_timing_point.beatLength)
@@ -212,17 +263,19 @@ class Slider(HitObject):
         else:
             SV = 1
         endtime = float(self.length) / (SliderMultiplier * 100 * SV) * float(current_timing_point.beatLength) #length / (SliderMultiplier * 100 * SV) * beatLength
+        self.endtime_relative = endtime
+        self.endtime_absolute = endtime + current_time
         return endtime
 
     def draw_slider(self, window):
         if self.curve_type == "B":   # bézier
             draw_bezier_curve(window, self.curve_points)
         elif self.curve.type == "C": # centripetal catmull-rom
-            pass
+            draw_spline(window, self.curve_points)
         elif self.curve.type == "L": # Linear
-            pass
+            draw_line(window, self.curve_points)
         elif self.curve.type == "P": # Perfect circle
-            pass
+            draw_cricle(window, self.curve_points)
 
     def is_hit(self, x, y):
         pass

@@ -5,3 +5,9 @@
 *.png
 *.jpg
 *.mp3
+.vscode/launch.json
+beatmap.osz
+beatmaps/audio.ogg
+beatmap.osz
+*.osz
+*.osz

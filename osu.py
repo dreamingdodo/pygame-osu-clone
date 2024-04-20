@@ -124,7 +124,7 @@ pygame.mixer.music.load(os.path.join('beatmaps', general['AudioFilename']))
 cursor_position = (400, 300)  
 
 # calc center of screen
-CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
+#CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
 
 #initiate cursor
 cursor_instance = Cursor(cursor_position)
@@ -146,10 +146,10 @@ hit_slider_list = []
 
 
 # Extract variables from difficulty_data
-HPDrainRate = int(difficulty_data['HPDrainRate'])
-CircleSize = int(difficulty_data['CircleSize'])
-OverallDifficulty = int(difficulty_data['OverallDifficulty'])
-ApproachRate = int(difficulty_data['ApproachRate'])
+HPDrainRate = float(difficulty_data['HPDrainRate'])
+CircleSize = float(difficulty_data['CircleSize'])
+OverallDifficulty = float(difficulty_data['OverallDifficulty'])
+ApproachRate = float(difficulty_data['ApproachRate'])
 SliderMultiplier = float(difficulty_data['SliderMultiplier'])
 SliderTickRate = int(difficulty_data['SliderTickRate'])
 print(difficulty_data)
@@ -268,7 +268,7 @@ def calculate_angle(CENTER, current, initial):
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point):
+def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER):
     for hit_object in hit_objects_list:
         if hit_object.visible:
             for bit_index in range(8):
@@ -295,7 +295,6 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
                             hit_slider_list.append(hit_object)
                             slider_list.append(slider)
                             print("added slider to list")
-                            print(slider.curve_type)
                     elif bit_index == 2: #new combo
                         pass
                     elif bit_index == 3: #spinner
@@ -330,7 +329,6 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
                 angular_velocity_return =  spinner.calculate_angular_velocity(CENTER, current_pos, dt)
                 angular_velocity = angular_velocity_return[0]
                 spinner.initial_pos = angular_velocity_return[1]
-                print(angular_velocity_return)
                 draw_text(str(angular_velocity), font, TEXT_COL, 100, 100)
             else:
                 spinner_list.remove(spinner)
@@ -338,12 +336,14 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
                 print("removed spinner")
     
     for slider in slider_list:
-        if slider.calculate_slider_endtime(current_timing_point, SliderMultiplier) >= current_time:
+        if not hasattr(slider, 'endtime_absolute'):
+            slider.calculate_slider_endtime(current_timing_point, SliderMultiplier, current_time)
+        if slider.endtime_absolute <= current_time:
             slider_list.remove(slider)
+            print("removed slider from list")
         else:
-            if slider.time <= current_time:
-                slider.draw_slider(window)
-                slider.update(dt)
+            Slider.draw_slider(slider, window)
+            Slider.update(slider, dt)
 
                 
 
@@ -380,6 +380,7 @@ def main():
     start_time = 0  # Variable to store the time when the game starts running
     exit_settings = False
     initial_pos = (0, 0)
+    CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -425,6 +426,8 @@ def main():
                                 start_time = pygame.time.get_ticks()  # Record the start time
                 elif event.type == pygame.VIDEORESIZE:
                     recalculate_adjusted_position()
+                    width, height = window.get_size()
+                    CENTER = (width // 2, height // 2)
 
         else:  # Game loop
 
@@ -456,14 +459,13 @@ def main():
 
                 elif event.type == settings['right_click'] or settings['left_click']:
                     handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
-            
-            
-            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point)
 
             # do hit objects
             for hit_object in hit_objects_list:
                 hit_object.update(current_time)
                 hit_object.draw(window, OSU_HEIGHT, OSU_HEIGHT, VERTICAL_SHIFT)
+
+            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER)
             
             # display current time in ms
             current_time_str = "Current Time: {} ms".format(current_time)
