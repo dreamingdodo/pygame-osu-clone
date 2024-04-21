@@ -33,7 +33,9 @@ def load_textures():
     
     return hit_circle_texture, slider_texture, spinner_texture
 
-
+def get_current_score():
+    total = sum(hit_object.score for hit_object in hit_objects_list)
+    return str(total)
 
 def parse_osu_file(filename):
     # Check if the file is a .osz file
@@ -224,7 +226,7 @@ def display_keybindings_menu(window):
     return keybinding_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -235,7 +237,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time):
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time)
+                        hit_object.hit(current_time, OverallDifficulty)
                     else:
                         print(distance)
     elif event.type == pygame.KEYDOWN:
@@ -355,8 +357,8 @@ def recalculate_adjusted_position():
 
 # Initialize settings with default keybindings
 settings = {
-    'left_click': pygame.MOUSEBUTTONDOWN,
-    'right_click': pygame.MOUSEBUTTONDOWN,
+    'left_click': 1,
+    'right_click': 3,
 }
 
 def change_keybinding(key_binding):
@@ -459,7 +461,7 @@ def main():
                     running = False
 
                 elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time)
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty)
 
             # do hit objects
             for hit_object in hit_objects_list:
@@ -471,6 +473,10 @@ def main():
             # display current time in ms
             current_time_str = "Current Time: {} ms".format(current_time)
             draw_text(current_time_str, font, TEXT_COL, 50, 50)
+
+            # display current score
+            current_score_str = get_current_score()
+            draw_text(current_score_str, font, TEXT_COL, 50, 200)
 
             # Update the display
             pygame.display.flip()

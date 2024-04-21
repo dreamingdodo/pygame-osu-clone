@@ -92,6 +92,27 @@ def draw_cricle(window, curve_points):
     pygame.draw.circle(window, (255, 255, 255), (center_x, center_y), radius)
 
 
+def calculate_score(self, hit_time, OverallDifficulty):
+    if 'max_hit_error_great' not in globals():
+        max_hit_error_great = 80 - 6 * OverallDifficulty
+        max_hit_error_ok = 140 - 8 * OverallDifficulty
+        max_hit_error_meh = 200 - 10 * OverallDifficulty
+    hit_delta = abs(hit_time - self.time)
+    if hit_delta <= max_hit_error_great:
+        return 300
+        print("hit for 300")
+    elif hit_delta <= max_hit_error_ok:
+        return 100
+        print("hit for 100")
+    elif hit_delta <= max_hit_error_meh:
+        return 50
+        print("hit for 50")
+    elif hit_delta <= 400: # miss
+        print("missed")
+        return 0
+        self.miss()
+
+
 class HitObject(pygame.sprite.Sprite):
     
     def __init__(self, position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
@@ -120,6 +141,7 @@ class HitObject(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT))
         self.has_spinner = False
         self.has_slider = False
+        self.score = 0
         
         
 
@@ -190,12 +212,12 @@ class HitObject(pygame.sprite.Sprite):
 
 
 
-    def hit(self, hit_time):
+    def hit(self, hit_time, OverallDifficulty):
         if self.visible:
             print(f'Hit object at {self.time} was hit at time {hit_time}')
             self.visible = False
             self.washit = True
-            # ... rest of hit logic ...
+            self.score = calculate_score(self, hit_time, OverallDifficulty)
             return True
         return False
 
