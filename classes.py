@@ -258,30 +258,44 @@ class Slider(HitObject):
     def calculate_slider_endtime(self, current_timing_point, SliderMultiplier, current_time):
         if current_timing_point.uninherited == 0:
             # a negative inverse slider velocity multiplier, as a percentage
-            SV = 100 / -int(current_timing_point.beatLength)
+            SV = 100 / (100 + int(current_timing_point.beatLength))
             print("slide velocity multiplier: ", SV)
         else:
             SV = 1
-        endtime = float(self.length) / (SliderMultiplier * 100 * SV) * float(current_timing_point.beatLength) #length / (SliderMultiplier * 100 * SV) * beatLength
+        print("length: ", float(self.length), "slider multiplier: ", SliderMultiplier,"SV: ", SV, float(current_timing_point.beatLength))
+        endtime = float(self.length) / (SliderMultiplier * 100 * SV) * abs(float(current_timing_point.beatLength)) #length / (SliderMultiplier * 100 * SV) * beatLength
         self.endtime_relative = endtime
         self.endtime_absolute = endtime + current_time
         return endtime
 
     def draw_slider(self, window):
         if self.curve_type == "B":   # bézier
+            self.curve_points.insert(0, self.position)
             draw_bezier_curve(window, self.curve_points)
-        elif self.curve.type == "C": # centripetal catmull-rom
+        elif self.curve_type == "C": # centripetal catmull-rom
+            self.curve_points.insert(0, self.position)
             draw_spline(window, self.curve_points)
-        elif self.curve.type == "L": # Linear
+        elif self.curve_type == "L": # Linear
+            self.curve_points.insert(0, self.position)
             draw_line(window, self.curve_points)
-        elif self.curve.type == "P": # Perfect circle
-            draw_cricle(window, self.curve_points)
+        elif self.curve_type == "P": # Perfect circle
+            self.curve_points.insert(0, self.position)
+            if len(self.curve_points) > 3:
+                draw_bezier_curve(window, self.curve_points)
+            else:
+                draw_cricle(window, self.curve_points)
 
     def is_hit(self, x, y):
         pass
 
     def update(self, dt):
         pass
+
+    def adjust_curve_points(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
+        for point in self.curve_points:
+            point = HitObject.recalculate_adjusted_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
+        return self.curve_points
+
 
 class Beatmap:
     def __init__(self, general, editor, metadata, difficulty, events, timing_points, hit_objects):
@@ -391,9 +405,5 @@ class TimingPoints:
     def get_current_timing_point(current_time, timing_points_list):
         # Use bisect to find the insertion point for current_time in the timing_points_list
         index = bisect.bisect([tp.time for tp in timing_points_list], current_time)
-
-        # Otherwise, the timing point at index - 1 is the one with the highest time still less than current_time
-        return timing_points_list[index - 1]
-        
-
-
+        # Return the timing point with the lowest time attribute that is still higher than current_time
+        return timing_points_list[index] if index != len(timing_points_list) else None

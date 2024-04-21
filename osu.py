@@ -339,6 +339,7 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
         if not hasattr(slider, 'endtime_absolute'):
             slider.calculate_slider_endtime(current_timing_point, SliderMultiplier, current_time)
         if slider.endtime_absolute <= current_time:
+            print(slider.endtime_relative, current_time)
             slider_list.remove(slider)
             print("removed slider from list")
         else:
