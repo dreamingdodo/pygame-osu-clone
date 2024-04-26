@@ -1,5 +1,4 @@
 
-*.wav
 *.osb
 *.osu
 *.png
@@ -11,3 +10,4 @@ beatmaps/audio.ogg
 beatmap.osz
 *.osz
 *.osz
+/beatmaps

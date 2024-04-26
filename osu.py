@@ -146,6 +146,11 @@ slider_list = []
 # Create slider list that holds the respective hit_objects
 hit_slider_list = []
 
+# Load the sounds
+hit_sound = pygame.mixer.Sound('assets\drum-hitnormal.wav')
+bye_sound = pygame.mixer.Sound('assets\seeya.ogg')
+combo_break_sound = pygame.mixer.Sound('assets\combobreak.wav')
+
 
 # Extract variables from difficulty_data
 HPDrainRate = float(difficulty_data['HPDrainRate'])
@@ -226,7 +231,7 @@ def display_keybindings_menu(window):
     return keybinding_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -238,6 +243,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
                         hit_object.hit(current_time, OverallDifficulty)
+                        hit_sound.play()
                     else:
                         print(distance)
     elif event.type == pygame.KEYDOWN:
@@ -461,7 +467,7 @@ def main():
                     running = False
 
                 elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty)
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound)
 
             # do hit objects
             for hit_object in hit_objects_list:

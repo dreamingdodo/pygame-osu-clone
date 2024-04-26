@@ -107,10 +107,8 @@ def calculate_score(self, hit_time, OverallDifficulty):
     elif hit_delta <= max_hit_error_meh:
         return 50
         print("hit for 50")
-    elif hit_delta <= 400: # miss
-        print("missed")
+    else:
         return 0
-        self.miss()
 
 
 class HitObject(pygame.sprite.Sprite):
@@ -179,9 +177,9 @@ class HitObject(pygame.sprite.Sprite):
         # Calculate time difference between current time and hit object's time
         time_diff = self.time - current_time
         
-        # If the hit object's appearance time has passed but it's not hit yet, mark as missed
-        if time_diff <= -self.APPEARANCE_TIME_BEFORE_HIT and not self.washit and not self.wasmissed:
+        if self.visible == True and time_diff <= -400:
             self.miss()
+            self.score = 0
         
         # If the current time is past the hit object's appearance time, make it visible
         if current_time >= self.time - self.APPEARANCE_TIME_BEFORE_HIT and not self.washit and not self.wasmissed:
@@ -226,7 +224,6 @@ class HitObject(pygame.sprite.Sprite):
             print(f'Hit object at {self.time} was missed')
             self.visible = False
             self.wasmissed = True
-            # ... rest of miss logic ...
             return True
         return False
 
