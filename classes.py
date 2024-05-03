@@ -31,8 +31,6 @@ def draw_bezier_curve(screen, control_points):
     for point in control_points_array:
         pygame.draw.circle(screen, (255, 255, 255), point.astype(int), 5)
 
-# AI assist end
-
 def draw_line(screen, points, color=(255, 255, 255)):
     pygame.draw.lines(screen, color, False, points)
 
@@ -87,10 +85,27 @@ def calculate_circle(points):
 
     return (Ux, Uy, r)
 
+# Ai assist end
+
 def draw_cricle(window, curve_points):
     center_x, center_y, radius = calculate_circle(curve_points)
     pygame.draw.circle(window, (255, 255, 255), (center_x, center_y), radius)
 
+starting_index_var = -1
+
+def is_next_in_line(list, starting_index, current_object):
+    # Get the index of the current object
+    current_index = list.index(current_object)
+
+    if current_index == starting_index + 1:
+        print("it was next in line")
+        # Update the starting index
+        global starting_index_var
+        starting_index_var += 1
+        return True
+    else:
+        print("not next in line")
+        return False
 
 def calculate_score(self, hit_time, OverallDifficulty):
     if 'max_hit_error_great' not in globals():
@@ -210,12 +225,13 @@ class HitObject(pygame.sprite.Sprite):
 
 
 
-    def hit(self, hit_time, OverallDifficulty):
+    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list):
         if self.visible:
-            print(f'Hit object at {self.time} was hit at time {hit_time}')
-            self.visible = False
-            self.washit = True
-            self.score = calculate_score(self, hit_time, OverallDifficulty)
+            if is_next_in_line(sorted_hit_object_list, starting_index_var, self):
+                print(f'Hit object at {self.time} was hit at time {hit_time}')
+                self.visible = False
+                self.washit = True
+                self.score = calculate_score(self, hit_time, OverallDifficulty)
             return True
         return False
 
@@ -224,6 +240,8 @@ class HitObject(pygame.sprite.Sprite):
             print(f'Hit object at {self.time} was missed')
             self.visible = False
             self.wasmissed = True
+            global starting_index_var
+            starting_index_var += 1
             return True
         return False
 

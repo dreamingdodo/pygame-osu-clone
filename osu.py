@@ -192,7 +192,12 @@ for line in hit_objects_data:
     position = (x, y)
     hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition))
     print(line)
-    
+
+def object_comparator(HitObject):
+    return HitObject.time
+
+# sort a list of hit objects according to their time
+sorted_hit_object_list = sorted(hit_objects_list, key=object_comparator)
 
 def display_menu(window):
     window.fill((0, 0, 0))
@@ -231,7 +236,7 @@ def display_keybindings_menu(window):
     return keybinding_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -242,7 +247,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(current_time, OverallDifficulty)
+                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list)
                         hit_sound.play()
                     else:
                         print(distance)
@@ -256,7 +261,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time)
+                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list)
                     else:
                         print(distance)
             
@@ -467,7 +472,7 @@ def main():
                     running = False
 
                 elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound)
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list)
 
             # do hit objects
             for hit_object in hit_objects_list:
@@ -483,6 +488,10 @@ def main():
             # display current score
             current_score_str = get_current_score()
             draw_text(current_score_str, font, TEXT_COL, 50, 200)
+
+            # display current index
+            current_index = str(starting_index_var)
+            draw_text(current_index, font, TEXT_COL, 50, 300)
 
             # Update the display
             pygame.display.flip()
