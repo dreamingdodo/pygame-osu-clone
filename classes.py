@@ -232,7 +232,7 @@ class HitObject(pygame.sprite.Sprite):
 
 
 
-    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list):
+    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something):
         if self.visible:
             if not hit_something:
                 if is_next_in_line(sorted_hit_object_list, starting_index_var, self):

@@ -236,7 +236,7 @@ def display_keybindings_menu(window):
     return keybinding_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -247,7 +247,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list)
+                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_something)
                         hit_sound.play()
                     else:
                         print(distance)
@@ -261,7 +261,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list)
+                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_something= hit_something)
                     else:
                         print(distance)
             
@@ -395,6 +395,7 @@ def main():
     exit_settings = False
     initial_pos = (0, 0)
     CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
+    hit_something = False # Variable that defines if a object has already been hit that frame
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -472,7 +473,7 @@ def main():
                     running = False
 
                 elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list)
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something)
 
             # do hit objects
             for hit_object in hit_objects_list:
