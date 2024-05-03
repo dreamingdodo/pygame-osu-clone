@@ -481,6 +481,8 @@ def main():
 
             main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER)
             
+            hit_something = True
+
             # display current time in ms
             current_time_str = "Current Time: {} ms".format(current_time)
             draw_text(current_time_str, font, TEXT_COL, 50, 50)

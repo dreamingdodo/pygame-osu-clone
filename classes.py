@@ -93,15 +93,22 @@ def draw_cricle(window, curve_points):
 
 starting_index_var = -1
 
+def is_last(obj, list):
+    return obj == list[-1]
+
 def is_next_in_line(list, starting_index, current_object):
     # Get the index of the current object
     current_index = list.index(current_object)
 
     if current_index == starting_index + 1:
+        if is_last(object, list):
+            running = False #stop the programm if last object was hit
         print("it was next in line")
         # Update the starting index
         global starting_index_var
         starting_index_var += 1
+        global hit_something
+        hit_something = True
         return True
     else:
         print("not next in line")
@@ -227,12 +234,13 @@ class HitObject(pygame.sprite.Sprite):
 
     def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list):
         if self.visible:
-            if is_next_in_line(sorted_hit_object_list, starting_index_var, self):
-                print(f'Hit object at {self.time} was hit at time {hit_time}')
-                self.visible = False
-                self.washit = True
-                self.score = calculate_score(self, hit_time, OverallDifficulty)
-            return True
+            if not hit_something:
+                if is_next_in_line(sorted_hit_object_list, starting_index_var, self):
+                    print(f'Hit object at {self.time} was hit at time {hit_time}')
+                    self.visible = False
+                    self.washit = True
+                    self.score = calculate_score(self, hit_time, OverallDifficulty)
+                return True
         return False
 
     def miss(self):
