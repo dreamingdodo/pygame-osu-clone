@@ -146,10 +146,15 @@ slider_list = []
 # Create slider list that holds the respective hit_objects
 hit_slider_list = []
 
+# Make the dir's work on both windows and linux
+assets_dir = "assets"
+
 # Load the sounds
-hit_sound = pygame.mixer.Sound('assets\drum-hitnormal.wav')
-bye_sound = pygame.mixer.Sound('assets\seeya.ogg')
-combo_break_sound = pygame.mixer.Sound('assets\combobreak.wav')
+hit_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'drum-hitnormal.wav'))
+bye_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'seeya.ogg'))
+combo_break_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'combobreak.wav'))
+
+bye_length_seconds = bye_sound.get_length()
 
 
 # Extract variables from difficulty_data
@@ -247,8 +252,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_something)
-                        hit_sound.play()
+                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound)
                     else:
                         print(distance)
     elif event.type == pygame.KEYDOWN:
@@ -261,7 +265,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_something= hit_something)
+                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_something= hit_something, hit_sound= hit_sound)
                     else:
                         print(distance)
             
@@ -385,6 +389,11 @@ def change_keybinding(key_binding):
                 print(f"Keybinding for {key_binding} has been changed to {event.button}")
                 return
 
+def get_last_time():
+    last_object = hit_objects_list[-1]
+    last_time = last_object.time
+    print(last_time)
+    return last_time
 
 def main():
     clock = pygame.time.Clock()
@@ -396,6 +405,7 @@ def main():
     initial_pos = (0, 0)
     CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
     hit_something = False # Variable that defines if a object has already been hit that frame
+    last_time = get_last_time()
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -405,6 +415,8 @@ def main():
             song_rects = display_menu(window)  # Get bounding rectangles and corresponding song texts
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    bye_sound.play()
+                    pygame.time.delay(int(bye_length_seconds * 1000))
                     pygame.quit()
                     return  # Exit program if window closed
                 elif event.type == pygame.KEYDOWN:
@@ -458,6 +470,11 @@ def main():
 
             current_time = pygame.time.get_ticks() - start_time
 
+            if last_time < current_time:
+                pygame.mixer.music.stop()
+                music_playing = False
+                running = False
+
             #update cursor position
             new_cursor_position = pygame.mouse.get_pos()
             cursor_instance.update_position(new_cursor_position)
@@ -475,6 +492,8 @@ def main():
                 elif event.type == settings['right_click'] or settings['left_click']:
                     handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something)
 
+            hit_something = False
+
             # do hit objects
             for hit_object in hit_objects_list:
                 hit_object.update(current_time)
@@ -482,7 +501,6 @@ def main():
 
             main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER)
             
-            hit_something = True
 
             # display current time in ms
             current_time_str = "Current Time: {} ms".format(current_time)

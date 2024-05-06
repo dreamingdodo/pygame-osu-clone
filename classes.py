@@ -96,7 +96,7 @@ starting_index_var = -1
 def is_last(obj, list):
     return obj == list[-1]
 
-def is_next_in_line(list, starting_index, current_object):
+def is_next_in_line(list, starting_index, current_object, hit_sound):
     # Get the index of the current object
     current_index = list.index(current_object)
 
@@ -109,9 +109,11 @@ def is_next_in_line(list, starting_index, current_object):
         starting_index_var += 1
         global hit_something
         hit_something = True
+        hit_sound.play()
         return True
     else:
         print("not next in line")
+        # play sound
         return False
 
 def calculate_score(self, hit_time, OverallDifficulty):
@@ -232,10 +234,10 @@ class HitObject(pygame.sprite.Sprite):
 
 
 
-    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something):
+    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound):
         if self.visible:
             if not hit_something:
-                if is_next_in_line(sorted_hit_object_list, starting_index_var, self):
+                if is_next_in_line(sorted_hit_object_list, starting_index_var, self, hit_sound):
                     print(f'Hit object at {self.time} was hit at time {hit_time}')
                     self.visible = False
                     self.washit = True
@@ -448,7 +450,7 @@ class TimingPoints:
         self.effects = effects
     
     def get_current_timing_point(current_time, timing_points_list):
-        # Use bisect to find the insertion point for current_time in the timing_points_list
+        # find the insertion point for current_time in the timing_points_list
         index = bisect.bisect([tp.time for tp in timing_points_list], current_time)
         # Return the timing point with the lowest time attribute that is still higher than current_time
         return timing_points_list[index] if index != len(timing_points_list) else None
