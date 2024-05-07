@@ -23,6 +23,15 @@ This project requires the following packages:
 3. **Run `osu.py`**: This script prompts you to select a difficulty using your mouse.
 4. **Play OSU!**: Enjoy the game!
 
+### How to play
+1. **Options**: In the main menu, press `o` to open the options menu. To change the keybindings, click the button you want to change and press the key/button you want to replace it with. These keybindings will be reset everytime you run `osu.py`.
+
+### TODO
+1. Save keybindings
+2. Sliders an option to enable (off by default)
+3. Miss sound
+4. Write technical documentation
+
 ## Credits
 - AI-assisted parts of the code are marked with comments.
 - Preinstalled assets are sourced from [this skin](https://osu.ppy.sh/community/forums/topics/1491596).
