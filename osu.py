@@ -4,6 +4,9 @@ import os
 import zipfile
 import math
 import bisect
+import requests
+from bs4 import BeautifulSoup
+import shutil
 
 pygame.init()
 
@@ -18,6 +21,81 @@ def draw_text(text, font, text_col, x, y):
   img_rect = img.get_rect(topleft=(x, y))
   window.blit(img, (x, y))
   return img_rect
+
+def get_beatmap_info():
+    url = "https://beatconnect.io"
+    response = requests.get(url)
+    
+    beatmap_info = {}  # Dictionary to store names and links
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, "html.parser")
+        
+        # Find all elements containing the names and links
+        elements = soup.find_all("div", class_="gallery-item")
+        
+        # Extract names and links from the elements and store in dictionary
+        for element in elements:
+            name = element.find("span", class_="title").text.strip()
+            link = element.find("a", class_="download").get("href")
+            beatmap_info[name] = link
+        
+        return beatmap_info
+    else:
+        print("Failed to retrieve the website.", response.status_code)
+
+def generate_download_link(link):
+    url = "https://beatconnect.io"
+    full_link = url + link
+    return full_link
+
+def download_and_import_file(url):
+    # Function to download a file from a URL and import it
+    
+    def rename_file(old_path, new_name, target_dir):
+        # Rename a file
+        try:
+            new_path = os.path.join(target_dir, new_name)
+            os.rename(old_path, new_path)
+            print(f"File '{old_path}' renamed to '{new_path}'.")
+            return new_path
+        except FileNotFoundError:
+            print(f"File '{old_path}' not found.")
+            return None
+
+    def delete_folder(folder_path):
+        # Delete a folder
+        try:
+            shutil.rmtree(folder_path)
+            print(f"Folder '{folder_path}' deleted successfully.")
+        except FileNotFoundError:
+            print(f"Folder '{folder_path}' not found.")
+
+    # Get directory of the script
+    target_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Download the file
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Save the file
+        file_path = os.path.join(target_dir, "beatmap.osz")
+        with open(file_path, 'wb') as file:
+            file.write(response.content)
+        print(f"File downloaded successfully to '{file_path}'.")
+
+        # Additional logic here to import the file into the game
+        # For now, let's just print the file path
+        print(f"File imported: {file_path}")
+
+        # Delete folder
+        folder_to_delete = os.path.join(target_dir, "beatmaps")
+        delete_folder(folder_to_delete)
+    else:
+        print(f"Failed to download file from {url}. Status code: {response.status_code}")
+
+    # Restart
+    restart_program()
+
 
 def get_bit(value, bit_index):
     mask = 1 << bit_index  # Create a mask for the bit index
@@ -98,8 +176,8 @@ def parse_osu_file(filename):
 # Parse the .osu file
 general, editor, metadata, difficulty_data, events, timing_points, hit_objects_data = parse_osu_file('beatmap.osz')
 
-# Initialize Pygame
-pygame.init()
+# Get API key from beatconnect.IO
+#api_key = get_api_key()
 
 # Set the size of the osu! playfield
 OSU_WIDTH, OSU_HEIGHT = 512, 384
@@ -240,6 +318,24 @@ def display_keybindings_menu(window):
     pygame.display.flip() 
     return keybinding_rects
 
+def display_names_menu(window, names, scroll_offset):
+    window.fill((0, 0, 0))
+    
+    draw_text("Select a Name:", font, TEXT_COL, 50, 50)
+
+    name_rects = {}  # Dictionary to store bounding rectangles of name texts
+
+    visible_names = names[scroll_offset:scroll_offset + 10]  # Display up to 10 names at a time
+
+    menu_y = 100
+    for index, name in enumerate(visible_names):
+        text_rect = draw_text(name, font, TEXT_COL, 50, menu_y)
+        name_rects[text_rect.topleft] = name  # Store the top-left corner of the bounding rectangle and corresponding name text
+        menu_y += 40
+
+    pygame.display.flip() 
+    return name_rects
+
 
 def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something):
     if event.type == pygame.MOUSEBUTTONDOWN:
@@ -269,7 +365,9 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     else:
                         print(distance)
             
-
+def restart_program():
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
 
 def check_hit_circle(hit_object):
     # Check if the mouse click is within the hit circle
@@ -401,7 +499,6 @@ def main():
     music_playing = False
     current_time = 0  # Initialize current_time
     start_time = 0  # Variable to store the time when the game starts running
-    exit_settings = False
     initial_pos = (0, 0)
     CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
     hit_something = False # Variable that defines if a object has already been hit that frame
@@ -420,28 +517,62 @@ def main():
                     pygame.quit()
                     return  # Exit program if window closed
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
+                    if event.key == pygame.K_1:
                         pygame.quit()
                         return  # Exit program if ESC pressed
                     elif event.key == pygame.K_RETURN:  # Start the game loop when Enter is pressed
                         running = True
                     elif event.key == pygame.K_o:
+                        exit_settings = False
                         while True:
                             keybinding_rects = display_keybindings_menu(window)  # Display the keybindings menu
-                            for settings_event in pygame.event.get():  # Fetch new events
+                            for settings_event in pygame.event.get():
                                 if settings_event.type == pygame.KEYDOWN:
-                                    if settings_event.key == pygame.K_ESCAPE:
+                                    if settings_event.key == pygame.K_1:
                                         exit_settings = True  # Set the flag to True when you want to exit
                                         break
                                 elif settings_event.type == pygame.MOUSEBUTTONDOWN:
-                                    if settings_event.button == 1:  # Check if left mouse button clicked
+                                    if settings_event.button == 1:
                                         # Check if mouse click is within the bounding rectangle of any keybinding text
                                         for rect_top_left, keybinding in keybinding_rects.items():
                                             if pygame.Rect(rect_top_left, (100, 30)).collidepoint(settings_event.pos):  # Use 100x30 as width and height of text
                                                 print("Keybinding selected:", keybinding)
                                                 change_keybinding(keybinding)  # Change the selected keybinding
                             if exit_settings:  # Check the flag after the inner loop
-                                break  # If the flag is True, break the outer loop
+                                break
+                    elif event.key == pygame.K_d: # select beatmap from beatconnect.io
+                        beatmap_info = get_beatmap_info()
+                        names = list(beatmap_info.keys())
+                        exit_names = False
+                        scroll_offset = 0
+
+                        while True:
+                            name_rects = display_names_menu(window, names, scroll_offset)
+
+                            for names_event in pygame.event.get(): 
+                                if names_event.type == pygame.KEYDOWN:
+                                    if names_event.key == pygame.K_1:
+                                        exit_names = True  # Set the flag to True when you want to exit
+                                        break
+                                elif names_event.type == pygame.MOUSEWHEEL:
+                                    if names_event.y > 0:
+                                        print("scrolled up")
+                                        scroll_offset -= 1  # Scroll up
+                                    elif names_event.y < 0:
+                                        print("scrolled down")
+                                        scroll_offset += 1  # Scroll down
+                                elif names_event.type == pygame.MOUSEBUTTONDOWN:
+                                    if names_event.button == 1:
+                                        # Check if mouse click is within the bounding rectangle of any name
+                                        for rect_top_left, name in name_rects.items():
+                                            if pygame.Rect(rect_top_left, (100, 30)).collidepoint(names_event.pos):  # Use 100x30 as width and height of text
+                                                print("name selected:", name)
+                                                link = beatmap_info.get(name)
+                                                d_url = generate_download_link(link)
+                                                print(d_url)
+                                                download_and_import_file(d_url)
+                            if exit_names:  # Check the flag after the inner loop
+                                break
 
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if event.button == 1:  # Check if left mouse button clicked
@@ -488,6 +619,13 @@ def main():
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_1:
+                        print("exit from game")
+                        pygame.mixer.music.stop()
+                        music_playing = False
+                        running = False
 
                 elif event.type == settings['right_click'] or settings['left_click']:
                     handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something)
