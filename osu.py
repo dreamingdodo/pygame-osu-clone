@@ -24,7 +24,13 @@ def draw_text(text, font, text_col, x, y):
 
 def get_beatmap_info():
     url = "https://beatconnect.io"
-    response = requests.get(url)
+    params = {
+        's': 'ranked',
+        'm': 'std',
+        'p': '0',
+        'q': ''
+    }   
+    response = requests.get(url, params=params)
     
     beatmap_info = {}  # Dictionary to store names and links
     
@@ -115,23 +121,31 @@ def get_current_score():
     total = sum(hit_object.score for hit_object in hit_objects_list)
     return str(total)
 
-def parse_osu_file(filename):
+def extract_osz(filename):
+    # Extract the .osz file
+    with zipfile.ZipFile(filename, 'r') as zip_ref:
+        zip_ref.extractall('beatmaps')
 
+def parse_osu_file(filename, name):
     if not os.path.exists(filename):
-        raise FileNotFoundError(f"Error: File '{filename}' does not exist. RTFM under manually installing new beatmaps")
+        raise FileNotFoundError(f"Error: File '{filename}' does not exist. RTM under manually installing new beatmaps")
 
     # Check if the file is a .osz file
     if filename.endswith('.osz'):
-        # Extract the .osz file
-        with zipfile.ZipFile(filename, 'r') as zip_ref:
-            zip_ref.extractall('beatmaps')
 
-        # Find the first .osu file in the extracted files
+        file_found = False
+
+        # Find the name.osu file in the extracted files
         for root, dirs, files in os.walk('beatmaps'):
             for file in files:
-                if file.endswith('.osu'):
+                if file == name:
                     filename = os.path.join(root, file)
+                    print('found file:', filename)
+                    file_found = True
                     break
+        if not file_found:
+            print("File not found.")
+
 
     with open(filename, 'r', encoding='utf-8') as file:
         lines = [line.strip() for line in file.readlines()]
@@ -178,7 +192,63 @@ def parse_osu_file(filename):
     return general, editor, metadata, difficulty, events, timing_points, hit_objects
 
 # Parse the .osu file
-general, editor, metadata, difficulty_data, events, timing_points, hit_objects_data = parse_osu_file('beatmap.osz')
+def start_parsing(name):
+
+    global general, editor, metadata, difficulty_data, events, timing_points, hit_objects_data, \
+        HPDrainRate, CircleSize, OverallDifficulty, ApproachRate, SliderMultiplier, SliderTickRate, \
+        hit_objects_list, timing_points_list, sorted_hit_object_list
+
+    general, editor, metadata, difficulty_data, events, timing_points, hit_objects_data = parse_osu_file('beatmap.osz', name)
+
+    # Extract variables from difficulty_data
+    HPDrainRate = round(float(difficulty_data['HPDrainRate']), 2)
+    CircleSize = round(float(difficulty_data['CircleSize']), 2)
+    OverallDifficulty = round(float(difficulty_data['OverallDifficulty']), 2)
+    ApproachRate = round(float(difficulty_data['ApproachRate']), 2)
+    SliderMultiplier = round(float(difficulty_data['SliderMultiplier']), 2)
+    SliderTickRate = int(difficulty_data['SliderTickRate'])
+    if SliderMultiplier == 0:
+        raise MyError(SliderMultiplier)
+    #print(difficulty_data)
+    
+    timing_points_list = []
+    # Extract a list of timing_points
+    for line in timing_points:
+        components = line.split(',')
+        time = float(components[0])
+        beatLength = components[1]
+        meter = components[2]
+        sampleSet = components[3]
+        sampleIndex = components[4]
+        volume = components[5]
+        uninherited = components[6]
+        effects = components[7]
+        timing_points_list.append(TimingPoints(time, beatLength, meter, sampleSet, sampleIndex, volume, uninherited, effects))
+        #print("timing point line: ",line)
+
+    # Sort the list of the timing points according to self.time
+    timing_points_list.sort(key=lambda TimingPoints: TimingPoints.time)
+
+    hit_objects_list = []
+    # Create the hit_objects and put them in a list
+    for line in hit_objects_data:
+        components = line.split(',')
+        x = int(components[0])
+        y = int(components[1])
+        time = int(components[2])
+        type = int(components[3])
+        hitSound = int(components[4])
+        addition = components[5:]  # The rest of the components are specific to the type of hit object
+        position = (x, y)
+        hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition))
+        #print(line)
+    
+    # sort a list of hit objects according to their time
+    sorted_hit_object_list = sorted(hit_objects_list, key=object_comparator)
+    #print(sorted_hit_object_list)
+
+    # Load the audio file
+    pygame.mixer.music.load(os.path.join('beatmaps', general['AudioFilename']))
 
 # Get API key from beatconnect.IO
 #api_key = get_api_key()
@@ -200,9 +270,6 @@ window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE
 
 # initialize playfield
 #playfield_instance = Playfield()
-
-# Load the audio file
-pygame.mixer.music.load(os.path.join('beatmaps', general['AudioFilename']))
 
 # initial cursor position
 cursor_position = (400, 300)  
@@ -239,52 +306,8 @@ combo_break_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'combobreak.wav'
 bye_length_seconds = bye_sound.get_length()
 
 
-# Extract variables from difficulty_data
-HPDrainRate = float(difficulty_data['HPDrainRate'])
-CircleSize = float(difficulty_data['CircleSize'])
-OverallDifficulty = float(difficulty_data['OverallDifficulty'])
-ApproachRate = float(difficulty_data['ApproachRate'])
-SliderMultiplier = float(difficulty_data['SliderMultiplier'])
-SliderTickRate = int(difficulty_data['SliderTickRate'])
-print(difficulty_data)
-
-# Extract a list of timing_points
-timing_points_list = []
-for line in timing_points:
-    components = line.split(',')
-    time = float(components[0])
-    beatLength = components[1]
-    meter = components[2]
-    sampleSet = components[3]
-    sampleIndex = components[4]
-    volume = components[5]
-    uninherited = components[6]
-    effects = components[7]
-    timing_points_list.append(TimingPoints(time, beatLength, meter, sampleSet, sampleIndex, volume, uninherited, effects))
-    print("timing point line: ",line)
-
-# Sort the list of the timing points according to self.time
-timing_points_list.sort(key=lambda TimingPoints: TimingPoints.time)
-
-# Create a list to hold the hit objects
-hit_objects_list = []
-for line in hit_objects_data:
-    components = line.split(',')
-    x = int(components[0])
-    y = int(components[1])
-    time = int(components[2])
-    type = int(components[3])
-    hitSound = int(components[4])
-    addition = components[5:]  # The rest of the components are specific to the type of hit object
-    position = (x, y)
-    hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition))
-    print(line)
-
 def object_comparator(HitObject):
     return HitObject.time
-
-# sort a list of hit objects according to their time
-sorted_hit_object_list = sorted(hit_objects_list, key=object_comparator)
 
 def display_menu(window):
     window.fill((0, 0, 0))
@@ -387,7 +410,7 @@ def calculate_angle(CENTER, current, initial):
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER):
+def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier):
     for hit_object in hit_objects_list:
         if hit_object.visible:
             for bit_index in range(8):
@@ -491,11 +514,15 @@ def change_keybinding(key_binding):
                 print(f"Keybinding for {key_binding} has been changed to {event.button}")
                 return
 
-def get_last_time():
+def get_last_time(hit_objects_list):
     last_object = hit_objects_list[-1]
     last_time = last_object.time
     print(last_time)
     return last_time
+
+def bye():
+    bye_sound.play()
+    pygame.time.delay(int(bye_length_seconds * 1000))
 
 def main():
     clock = pygame.time.Clock()
@@ -506,7 +533,8 @@ def main():
     initial_pos = (0, 0)
     CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
     hit_something = False # Variable that defines if a object has already been hit that frame
-    last_time = get_last_time()
+    late_rezize = False
+    extract_osz('beatmap.osz')
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -516,12 +544,12 @@ def main():
             song_rects = display_menu(window)  # Get bounding rectangles and corresponding song texts
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    bye_sound.play()
-                    pygame.time.delay(int(bye_length_seconds * 1000))
+                    bye()
                     pygame.quit()
                     return  # Exit program if window closed
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_1:
+                        bye()
                         pygame.quit()
                         return  # Exit program if ESC pressed
                     elif event.key == pygame.K_RETURN:  # Start the game loop when Enter is pressed
@@ -584,12 +612,22 @@ def main():
                         for rect_top_left, song in song_rects.items():
                             if pygame.Rect(rect_top_left, (100, 30)).collidepoint(event.pos):  # Use 100x30 as width and height of text
                                 print("Text clicked:", song)
+                                start_parsing(song)
+                                print("Parsing complete")
+                                last_time = get_last_time(hit_objects_list)
                                 running = True  # Start the game loop for the selected song
+                                if late_rezize:
+                                    recalculate_adjusted_position()
+                                    width, height = window.get_size()
+                                    CENTER = (width // 2, height // 2)
                                 start_time = pygame.time.get_ticks()  # Record the start time
                 elif event.type == pygame.VIDEORESIZE:
-                    recalculate_adjusted_position()
-                    width, height = window.get_size()
-                    CENTER = (width // 2, height // 2)
+                    if running:
+                        recalculate_adjusted_position()
+                        width, height = window.get_size()
+                        CENTER = (width // 2, height // 2)
+                    else:
+                        late_rezize = True
 
         else:  # Game loop
 
@@ -641,7 +679,7 @@ def main():
                 hit_object.update(current_time)
                 hit_object.draw(window, OSU_HEIGHT, OSU_HEIGHT, VERTICAL_SHIFT)
 
-            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER)
+            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier)
             
 
             # display current time in ms
@@ -651,10 +689,6 @@ def main():
             # display current score
             current_score_str = get_current_score()
             draw_text(current_score_str, font, TEXT_COL, 50, 200)
-
-            # display current index
-            current_index = str(starting_index_var)
-            draw_text(current_index, font, TEXT_COL, 50, 300)
 
             # Update the display
             pygame.display.flip()

@@ -91,22 +91,26 @@ def draw_cricle(window, curve_points):
     center_x, center_y, radius = calculate_circle(curve_points)
     pygame.draw.circle(window, (255, 255, 255), (center_x, center_y), radius)
 
-starting_index_var = -1
+starting_index = -1
 
 def is_last(obj, list):
     return obj == list[-1]
 
-def is_next_in_line(list, starting_index, current_object, hit_sound):
+def is_next_in_line(list, current_object, hit_sound):
     # Get the index of the current object
     current_index = list.index(current_object)
+    print("current_index:", current_index)
+    global starting_index
+    if current_index == 0:
+        print("changing var")
+        starting_index = -1
 
     if current_index == starting_index + 1:
         if is_last(object, list):
             running = False #stop the programm if last object was hit
         print("it was next in line")
         # Update the starting index
-        global starting_index_var
-        starting_index_var += 1
+        starting_index += 1
         global hit_something
         hit_something = True
         hit_sound.play()
@@ -169,7 +173,7 @@ class HitObject(pygame.sprite.Sprite):
 
     def calculate_circle_size(self, CircleSize):
         radius = 54.4 - 4.48 * CircleSize
-        print("circle radius: ", radius)
+        #print("circle radius: ", radius)
         return radius
 
     def calculate_appearance_time(self, ApproachRate):
@@ -190,7 +194,7 @@ class HitObject(pygame.sprite.Sprite):
         # Convert circle speed from pixels per millisecond to pixels per frame
         circle_speed_per_frame = circle_speed * (1000 / 60)
 
-        print("circle speed", circle_speed_per_frame)
+        #print("circle speed", circle_speed_per_frame)
 
         return circle_speed_per_frame
 
@@ -237,7 +241,7 @@ class HitObject(pygame.sprite.Sprite):
     def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound):
         if self.visible:
             if not hit_something:
-                if is_next_in_line(sorted_hit_object_list, starting_index_var, self, hit_sound):
+                if is_next_in_line(sorted_hit_object_list, self, hit_sound):
                     print(f'Hit object at {self.time} was hit at time {hit_time}')
                     self.visible = False
                     self.washit = True
@@ -250,8 +254,8 @@ class HitObject(pygame.sprite.Sprite):
             print(f'Hit object at {self.time} was missed')
             self.visible = False
             self.wasmissed = True
-            global starting_index_var
-            starting_index_var += 1
+            global starting_index
+            starting_index += 1
             return True
         return False
 
@@ -310,6 +314,8 @@ class Slider(HitObject):
         else:
             SV = 1
         print("length: ", float(self.length), "slider multiplier: ", SliderMultiplier,"SV: ", SV, float(current_timing_point.beatLength))
+        if SliderMultiplier == 0:
+            SliderMultiplier = 1
         endtime = float(self.length) / (SliderMultiplier * 100 * SV) * abs(float(current_timing_point.beatLength)) #length / (SliderMultiplier * 100 * SV) * beatLength
         self.endtime_relative = endtime
         self.endtime_absolute = endtime + current_time
@@ -454,3 +460,8 @@ class TimingPoints:
         index = bisect.bisect([tp.time for tp in timing_points_list], current_time)
         # Return the timing point with the lowest time attribute that is still higher than current_time
         return timing_points_list[index] if index != len(timing_points_list) else None
+
+class MyError(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
