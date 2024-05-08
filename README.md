@@ -34,10 +34,11 @@ This project requires the following packages:
 2. **Differences**: In this clone, there are no sliders and no combo.
 
 ### TODO
-1. Save keybindings
-2. Sliders an option to enable (off by default)
-3. Miss sound
-4. Write technical documentation
+- Save keybindings
+- Sliders an option to enable (off by default)
+- ~~Miss sound~~
+- Write technical documentation
+- ~~Spinner points~~
 
 ## Credits
 - AI-assisted parts of the code are marked with comments.

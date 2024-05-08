@@ -91,12 +91,15 @@ def draw_cricle(window, curve_points):
     center_x, center_y, radius = calculate_circle(curve_points)
     pygame.draw.circle(window, (255, 255, 255), (center_x, center_y), radius)
 
+def angle_between_points(center, point):
+    return math.atan2(point[1] - center[1], point[0] - center[0])
+
 starting_index = -1
 
 def is_last(obj, list):
     return obj == list[-1]
 
-def is_next_in_line(list, current_object, hit_sound):
+def is_next_in_line(list, current_object, hit_sound, miss_sound):
     # Get the index of the current object
     current_index = list.index(current_object)
     print("current_index:", current_index)
@@ -117,7 +120,7 @@ def is_next_in_line(list, current_object, hit_sound):
         return True
     else:
         print("not next in line")
-        # play sound
+        miss_sound.play()
         return False
 
 def calculate_score(self, hit_time, OverallDifficulty):
@@ -201,12 +204,12 @@ class HitObject(pygame.sprite.Sprite):
     def recalculate_adjusted_position(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
         self.adjusted_position = self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
 
-    def update(self, current_time):
+    def update(self, current_time, miss_sound):
         # Calculate time difference between current time and hit object's time
         time_diff = self.time - current_time
         
         if self.visible == True and time_diff <= -400:
-            self.miss()
+            self.miss(miss_sound)
             self.score = 0
         
         # If the current time is past the hit object's appearance time, make it visible
@@ -236,12 +239,13 @@ class HitObject(pygame.sprite.Sprite):
 
         return screen_position
 
+    def add_spinner_score(self):
+        self.score = 100
 
-
-    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound):
+    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound, miss_sound):
         if self.visible:
             if not hit_something:
-                if is_next_in_line(sorted_hit_object_list, self, hit_sound):
+                if is_next_in_line(sorted_hit_object_list, self, hit_sound, miss_sound):
                     print(f'Hit object at {self.time} was hit at time {hit_time}')
                     self.visible = False
                     self.washit = True
@@ -249,48 +253,34 @@ class HitObject(pygame.sprite.Sprite):
                 return True
         return False
 
-    def miss(self):
+    def miss(self, miss_sound):
         if self.visible:
             print(f'Hit object at {self.time} was missed')
             self.visible = False
             self.wasmissed = True
             global starting_index
             starting_index += 1
+            miss_sound.play()
             return True
         return False
 
 class Spinner(HitObject):
-    def __init__(self, hit_object, initial_pos, current_pos, endtime):
+    def __init__(self, hit_object, endtime):
         self.__dict__ = hit_object.__dict__.copy()  # Copy attributes from hit_object
-        self.initial_pos = initial_pos
-        self.current_pos = current_pos
         self.endtime = endtime
+        self.num_rotations = 0
         
-
-    def calculate_angular_velocity(self, CENTER, current_pos, dt):
-
-        # Calculate the initial angle
-        initial_angle = math.atan2(self.initial_pos[1] - CENTER[1], self.initial_pos[0] - CENTER[0])
-
-        # Calculate the new angle
-        new_angle = math.atan2(current_pos[1] - CENTER[1], current_pos[0] - CENTER[0])
-
-        # Calculate the change in angle
-        d_angle = new_angle - initial_angle
-
-        angle_threshold = 0.01 # Angel thershold
-
-        if abs(d_angle) < angle_threshold:
-            angular_velocity = 0
-        else:
-            angular_velocity = d_angle / dt
-
-        # Make all rotations positive
-        angular_velocity = abs(angular_velocity)
-
-        initial_pos = current_pos
-
-        return (angular_velocity, initial_pos)
+    def count_rotations(self, cursor_pos, center, prev_angle, num_rotations):
+        angle = angle_between_points(center, cursor_pos)
+    
+        if prev_angle is not None:
+            # Check if a full rotation is completed
+            if angle - prev_angle > math.pi:  # Greater than 180 degrees
+                self.num_rotations += 1
+            elif angle - prev_angle < -math.pi:  # Less than -180 degrees
+                self.num_rotations -= 1
+        
+        return angle, self.num_rotations
 
 
 class Slider(HitObject):

@@ -118,7 +118,7 @@ def load_textures():
     return hit_circle_texture, slider_texture, spinner_texture
 
 def get_current_score():
-    total = sum(hit_object.score for hit_object in hit_objects_list)
+    total = sum(hit_object.score for hit_object in hit_objects_list) + sum(spinner.score for spinner in all_spinner_list)
     return str(total)
 
 def extract_osz(filename):
@@ -286,6 +286,8 @@ current_hit_objects = []
 # Spinner list
 spinner_list = []
 
+all_spinner_list = []
+
 # Create spinner list that holds the respective hit_objects
 hit_spinner_list = []
 
@@ -301,7 +303,7 @@ assets_dir = "assets"
 # Load the sounds
 hit_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'drum-hitnormal.wav'))
 bye_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'seeya.ogg'))
-combo_break_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'combobreak.wav'))
+miss_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'combobreak.wav'))
 
 bye_length_seconds = bye_sound.get_length()
 
@@ -364,7 +366,7 @@ def display_names_menu(window, names, scroll_offset):
     return name_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something, miss_sound):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -375,7 +377,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound)
+                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound, miss_sound)
                     else:
                         print(distance)
     elif event.type == pygame.KEYDOWN:
@@ -388,7 +390,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_something= hit_something, hit_sound= hit_sound)
+                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_something= hit_something, hit_sound= hit_sound, miss_sound= miss_sound)
                     else:
                         print(distance)
             
@@ -410,7 +412,7 @@ def calculate_angle(CENTER, current, initial):
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier):
+def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations):
     for hit_object in hit_objects_list:
         if hit_object.visible:
             for bit_index in range(8):
@@ -445,10 +447,11 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
                             print("endtime: ", endtime)
                             if hit_object.addition[1:]:
                                 hitsample = hit_object.addition[1]
-                            spinner = Spinner(hit_object, pygame.mouse.get_pos(), pygame.mouse.get_pos(), endtime)
+                            spinner = Spinner(hit_object, endtime)
                             hit_object.has_spinner = True
                             hit_spinner_list.append(hit_object)
                             spinner_list.append(spinner)
+                            all_spinner_list.append(spinner)
                             print("added spinner to list")
                     elif bit_index == 4: #color hax
                         pass
@@ -464,18 +467,15 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
         if spinner.time <= current_time:
             if int(spinner.endtime) >= current_time:
                 pygame.draw.circle(window, (255, 255, 255), CENTER, 50)
-                if spinner.initial_pos == (0,0):
-                    print("got new pos for initial")
-                    spinner.initial_pos = pygame.mouse.get_pos()
-                current_pos = pygame.mouse.get_pos()
-                angular_velocity_return =  spinner.calculate_angular_velocity(CENTER, current_pos, dt)
-                angular_velocity = angular_velocity_return[0]
-                spinner.initial_pos = angular_velocity_return[1]
-                draw_text(str(angular_velocity), font, TEXT_COL, 100, 100)
+                cursor_pos = pygame.mouse.get_pos()
+                prev_angle, num_rotations = spinner.count_rotations(cursor_pos, CENTER, prev_angle, num_rotations)
+                return prev_angle, num_rotations
             else:
                 spinner_list.remove(spinner)
-                initial_pos = (0, 0)
                 print("removed spinner")
+                spinner.score = 100 * abs(num_rotations)
+                num_rotations = 0
+                prev_angle = None
     
     for slider in slider_list:
         if not hasattr(slider, 'endtime_absolute'):
@@ -535,6 +535,8 @@ def main():
     hit_something = False # Variable that defines if a object has already been hit that frame
     late_rezize = False
     extract_osz('beatmap.osz')
+    prev_angle = None
+    num_rotations = 0
     
     hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
@@ -670,17 +672,20 @@ def main():
                         running = False
 
                 elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something)
+                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something, miss_sound)
 
             hit_something = False
 
             # do hit objects
             for hit_object in hit_objects_list:
-                hit_object.update(current_time)
+                hit_object.update(current_time, miss_sound)
                 hit_object.draw(window, OSU_HEIGHT, OSU_HEIGHT, VERTICAL_SHIFT)
 
-            main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier)
+            main_logic_return = main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations)
             
+            if main_logic_return is not None:
+                prev_angle, num_rotations = main_logic_return
+                draw_text(f"Rotations: {abs(num_rotations)}", font, TEXT_COL, 50, 100)
 
             # display current time in ms
             current_time_str = "Current Time: {} ms".format(current_time)
