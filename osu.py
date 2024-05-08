@@ -116,6 +116,10 @@ def get_current_score():
     return str(total)
 
 def parse_osu_file(filename):
+
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Error: File '{filename}' does not exist. RTFM under manually installing new beatmaps")
+
     # Check if the file is a .osz file
     if filename.endswith('.osz'):
         # Extract the .osz file
