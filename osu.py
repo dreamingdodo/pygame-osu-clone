@@ -7,6 +7,8 @@ import bisect
 import requests
 from bs4 import BeautifulSoup
 import shutil
+import json
+
 
 pygame.init()
 
@@ -271,6 +273,9 @@ window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.RESIZABLE
 # initialize playfield
 #playfield_instance = Playfield()
 
+# Define the file path for the JSON config file
+config_file_path = 'config.json'
+
 # initial cursor position
 cursor_position = (400, 300)  
 
@@ -329,6 +334,23 @@ def display_menu(window):
     pygame.display.flip() 
     return song_rects
 
+# Function to save settings to a JSON file
+def save_settings():
+    with open(config_file_path, 'w') as config_file:
+        json.dump(settings, config_file, indent=4)
+
+def load_settings_from_json(config_file_path):
+    try:
+        with open(config_file_path, 'r') as config_file:
+            print("got config file")
+            return json.load(config_file)
+    except FileNotFoundError:
+        print("Config file not found. Using default settings.")
+        return {
+            'left_click': 1,
+            'right_click': 3,
+        }
+
 def display_keybindings_menu(window):
     window.fill((0, 0, 0))
     
@@ -339,9 +361,11 @@ def display_keybindings_menu(window):
     keybinding_rects = {}  # Dictionary to store bounding rectangles of keybinding texts
 
     menu_y = 100
-    for index, keybinding in enumerate(settings):
-        text_rect = draw_text(keybinding, font, TEXT_COL, 50, menu_y)
-        keybinding_rects[text_rect.topleft] = keybinding  # Store the top-left corner of the bounding rectangle and corresponding keybinding text
+    for key, value in settings.items():  # Iterate over key-value pairs in settings
+        key_name = pygame.key.name(value)  # Get the name of the key
+        text = f"{key.capitalize().replace('_', ' ')} = {key_name.capitalize()}"
+        text_rect = draw_text(text, font, TEXT_COL, 50, menu_y)
+        keybinding_rects[text_rect.topleft] = key  # Store the top-left corner of the bounding rectangle and corresponding keybinding text
         menu_y += 40
 
     pygame.display.flip() 
@@ -496,10 +520,7 @@ def recalculate_adjusted_position():
         hit_object.recalculate_adjusted_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
 
 # Initialize settings with default keybindings
-settings = {
-    'left_click': 1,
-    'right_click': 3,
-}
+settings = load_settings_from_json(config_file_path)
 
 def change_keybinding(key_binding):
     print(f"Press a key to set the new keybinding for {key_binding}")
@@ -508,10 +529,12 @@ def change_keybinding(key_binding):
             if event.type == pygame.KEYDOWN:
                 settings[key_binding] = event.key  # Update the keybinding in the settings
                 print(f"Keybinding for {key_binding} has been changed to {event.key}")
+                save_settings()  # Save settings to JSON file
                 return
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 settings[key_binding] = event.button
                 print(f"Keybinding for {key_binding} has been changed to {event.button}")
+                save_settings()  # Save settings to JSON file
                 return
 
 def get_last_time(hit_objects_list):
@@ -558,6 +581,7 @@ def main():
                         running = True
                     elif event.key == pygame.K_o:
                         exit_settings = False
+                        settings = load_settings_from_json(config_file_path)
                         while True:
                             keybinding_rects = display_keybindings_menu(window)  # Display the keybindings menu
                             for settings_event in pygame.event.get():
@@ -671,8 +695,7 @@ def main():
                         music_playing = False
                         running = False
 
-                elif event.type == settings['right_click'] or settings['left_click']:
-                    handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something, miss_sound)
+                handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something, miss_sound)
 
             hit_something = False
 
