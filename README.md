@@ -34,7 +34,7 @@ This project requires the following packages:
 2. **Differences**: In this clone, there are no sliders and no combo.
 
 ### TODO
-- Save keybindings
+- ~~Save keybindings~~
 - Sliders an option to enable (off by default)
 - ~~Miss sound~~
 - Write technical documentation
