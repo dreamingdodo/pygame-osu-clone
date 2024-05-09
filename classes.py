@@ -75,11 +75,13 @@ def calculate_circle(points):
 
     # Calculate the determinant of the matrix
     D = 2 * (x1 * (y2 - y3) + x2 * (y3 - y1) + x3 * (y1 - y2))
-
-    # Calculate the center of the circle
-    Ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / D
-    Uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / D
-
+    try:
+        # Calculate the center of the circle
+        Ux = ((x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)) / D
+        Uy = ((x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)) / D
+    except:
+        Ux = 1
+        Uy = 1
     # Calculate the radius of the circle
     r = np.sqrt((x1 - Ux)**2 + (y1 - Uy)**2)
 
@@ -297,19 +299,22 @@ class Slider(HitObject):
 
 
     def calculate_slider_endtime(self, current_timing_point, SliderMultiplier, current_time):
-        if current_timing_point.uninherited == 0:
-            # a negative inverse slider velocity multiplier, as a percentage
-            SV = 100 / (100 + int(current_timing_point.beatLength))
-            print("slide velocity multiplier: ", SV)
-        else:
-            SV = 1
-        print("length: ", float(self.length), "slider multiplier: ", SliderMultiplier,"SV: ", SV, float(current_timing_point.beatLength))
-        if SliderMultiplier == 0:
-            SliderMultiplier = 1
-        endtime = float(self.length) / (SliderMultiplier * 100 * SV) * abs(float(current_timing_point.beatLength)) #length / (SliderMultiplier * 100 * SV) * beatLength
-        self.endtime_relative = endtime
-        self.endtime_absolute = endtime + current_time
-        return endtime
+        try:
+            if current_timing_point.uninherited == 0:
+                # a negative inverse slider velocity multiplier, as a percentage
+                SV = 100 / (100 + int(current_timing_point.beatLength))
+                print("slide velocity multiplier: ", SV)
+            else:
+                SV = 1
+            print("length: ", float(self.length), "slider multiplier: ", SliderMultiplier,"SV: ", SV, float(current_timing_point.beatLength))
+            if SliderMultiplier == 0:
+                SliderMultiplier = 1
+            endtime = float(self.length) / (SliderMultiplier * 100 * SV) * abs(float(current_timing_point.beatLength)) #length / (SliderMultiplier * 100 * SV) * beatLength
+            self.endtime_relative = endtime
+            self.endtime_absolute = endtime + current_time
+            return endtime
+        except:
+            print("oh no. anyway")
 
     def draw_slider(self, window):
         if self.curve_type == "B":   # bézier

@@ -302,6 +302,9 @@ slider_list = []
 # Create slider list that holds the respective hit_objects
 hit_slider_list = []
 
+# json file for the scores
+SCORES_FILE = "beatmap_scores.json"
+
 # Make the dir's work on both windows and linux
 assets_dir = "assets"
 
@@ -322,12 +325,14 @@ def display_menu(window):
     draw_text("Select a Song:", font, TEXT_COL, 50, 50)
 
     songs = [file for file in os.listdir('beatmaps') if file.endswith('.osu')]
-
     song_rects = {}  # Dictionary to store bounding rectangles of song texts
 
     menu_y = 100
     for index, song in enumerate(songs):
-        text_rect = draw_text(song, font, TEXT_COL, 50, menu_y)
+        high_score = get_score(song)
+        if high_score == None:
+            high_score = ''
+        text_rect = draw_text(f'{song[:-4]} {high_score}', font, TEXT_COL, 50, menu_y)
         song_rects[text_rect.topleft] = song  # Store the top-left corner of the bounding rectangle and corresponding song text
         menu_y += 40
 
@@ -350,6 +355,35 @@ def load_settings_from_json(config_file_path):
             'left_click': 1,
             'right_click': 3,
         }
+
+def save_score(song, score):
+    scores = load_scores()
+    scores[song] = score
+    with open(SCORES_FILE, 'w') as f:
+        json.dump(scores, f, indent=4)
+
+def load_scores():
+    try:
+        with open(SCORES_FILE, 'r') as f:
+            data = f.read()
+            if data:
+                scores = json.loads(data)
+            else:
+                scores = {}
+    except FileNotFoundError:
+        scores = {}
+    return scores
+
+def initialize_scores(song):
+    scores = load_scores()
+    if song not in scores:
+        scores[song] = 0
+        with open(SCORES_FILE, 'w') as f:
+            json.dump(scores, f, indent=4)
+
+def get_score(song):
+    scores = load_scores()
+    return scores.get(song)
 
 def display_keybindings_menu(window):
     window.fill((0, 0, 0))
@@ -512,7 +546,22 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
             Slider.draw_slider(slider, window)
             Slider.update(slider, dt)
 
-                
+def endscreen(end_score, song):
+    window.fill((0, 0, 0))
+    old_score = get_score(song)
+
+    draw_text(f'Score: {end_score}', font, TEXT_COL, 100, 100)
+    draw_text(f'Highscore: {old_score}', font, TEXT_COL, 100, 150)
+    if old_score == None:
+        draw_text("NEW HIGH SCORE", font, TEXT_COL, 100, 200)
+    elif int(old_score) < int(end_score):
+        draw_text("NEW HIGH SCORE", font, TEXT_COL, 100, 200)
+    for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                return True
+
+    pygame.display.flip()
 
 def recalculate_adjusted_position():
     print("rezized the window")
@@ -629,6 +678,7 @@ def main():
                                                 d_url = generate_download_link(link)
                                                 print(d_url)
                                                 download_and_import_file(d_url)
+                                                print(f"downloaded and installed {name}")
                             if exit_names:  # Check the flag after the inner loop
                                 break
 
@@ -640,6 +690,7 @@ def main():
                                 print("Text clicked:", song)
                                 start_parsing(song)
                                 print("Parsing complete")
+                                initialize_scores(song)
                                 last_time = get_last_time(hit_objects_list)
                                 running = True  # Start the game loop for the selected song
                                 if late_rezize:
@@ -669,7 +720,16 @@ def main():
 
             current_time = pygame.time.get_ticks() - start_time
 
-            if last_time < current_time:
+            if last_time < current_time: # Finish game
+                end_score = get_current_score()
+                while True:
+                    stop = endscreen(end_score, song)
+                    if stop != None:
+                        break
+                old_score = get_score(song)
+                if  old_score != None:
+                    if int(end_score) > old_score:
+                        save_score(song, end_score)
                 pygame.mixer.music.stop()
                 music_playing = False
                 running = False
