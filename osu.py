@@ -424,7 +424,7 @@ def display_names_menu(window, names, scroll_offset):
     return name_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something, miss_sound):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, miss_sound):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -435,9 +435,11 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound, miss_sound)
+                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_sound, miss_sound)
+                        break
                     else:
-                        print(distance)
+                        #print(distance)
+                        pass
     elif event.type == pygame.KEYDOWN:
         if event.key == settings['left_click'] or event.key == settings['right_click']:
             mouse_pos = pygame.mouse.get_pos()
@@ -448,7 +450,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_something= hit_something, hit_sound= hit_sound, miss_sound= miss_sound)
+                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_sound= hit_sound, miss_sound= miss_sound)
                     else:
                         print(distance)
             
@@ -604,7 +606,6 @@ def main():
     start_time = 0  # Variable to store the time when the game starts running
     initial_pos = (0, 0)
     CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
-    hit_something = False # Variable that defines if a object has already been hit that frame
     late_rezize = False
     extract_osz('beatmap.osz')
     prev_angle = None
@@ -755,9 +756,7 @@ def main():
                         music_playing = False
                         running = False
 
-                handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, hit_something, miss_sound)
-
-            hit_something = False
+                handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, miss_sound)
 
             # do hit objects
             for hit_object in hit_objects_list:

@@ -116,8 +116,6 @@ def is_next_in_line(list, current_object, hit_sound, miss_sound):
         print("it was next in line")
         # Update the starting index
         starting_index += 1
-        global hit_something
-        hit_something = True
         hit_sound.play()
         return True
     else:
@@ -244,14 +242,13 @@ class HitObject(pygame.sprite.Sprite):
     def add_spinner_score(self):
         self.score = 100
 
-    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_something, hit_sound, miss_sound):
+    def hit(self, hit_time, OverallDifficulty, sorted_hit_object_list, hit_sound, miss_sound):
         if self.visible:
-            if not hit_something:
-                if is_next_in_line(sorted_hit_object_list, self, hit_sound, miss_sound):
-                    print(f'Hit object at {self.time} was hit at time {hit_time}')
-                    self.visible = False
-                    self.washit = True
-                    self.score = calculate_score(self, hit_time, OverallDifficulty)
+            if is_next_in_line(sorted_hit_object_list, self, hit_sound, miss_sound):
+                print(f'Hit object at {self.time} was hit at time {hit_time}')
+                self.visible = False
+                self.washit = True
+                self.score = calculate_score(self, hit_time, OverallDifficulty)
                 return True
         return False
 
