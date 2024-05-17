@@ -354,6 +354,7 @@ def load_settings_from_json(config_file_path):
         return {
             'left_click': 1,
             'right_click': 3,
+            'enable_sliders': 0
         }
 
 def save_score(song, score):
@@ -397,7 +398,14 @@ def display_keybindings_menu(window):
     menu_y = 100
     for key, value in settings.items():  # Iterate over key-value pairs in settings
         key_name = pygame.key.name(value)  # Get the name of the key
-        text = f"{key.capitalize().replace('_', ' ')} = {key_name.capitalize()}"
+        if value == 48:
+            text = f"{key.capitalize().replace('_', ' ')} = Disabled"
+            slider_switch = 48
+        elif value == 49:
+            text = f"{key.capitalize().replace('_', ' ')} = Enabled"
+            slider_switch = 49
+        else: 
+            text = f"{key.capitalize().replace('_', ' ')} = {key_name.capitalize()}"
         text_rect = draw_text(text, font, TEXT_COL, 50, menu_y)
         keybinding_rects[text_rect.topleft] = key  # Store the top-left corner of the bounding rectangle and corresponding keybinding text
         menu_y += 40
@@ -454,6 +462,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     else:
                         print(distance)
             
+# Make sure its a local file
 def restart_program():
     python = sys.executable
     os.execl(python, python, *sys.argv)
@@ -482,23 +491,25 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
                         pass
                         #already done i think
                     elif bit_index == 1: #slider
-                        if not hit_object.has_slider:
-                            # Get the curve points and curve type
-                            curve_points_curve_type = hit_object.addition[0]
-                            parts = curve_points_curve_type.split('|')
-                            curve_type = parts[0]
-                            curve_points = [tuple(map(int, part.split(':'))) for part in parts[1:]]
-                            # Get all other attributes
-                            slides = hit_object.addition[1] # Repeat count plus one
-                            length = hit_object.addition[2]
-                            edge_sounds = hit_object.addition[3] if len(hit_object.addition) > 3 else "None"
-                            edge_sets = hit_object.addition[4].split('|') if len(hit_object.addition) > 4 else ["0:0:0:0:"]
-                            print("curve type:", curve_type, "slides:", slides, "length:", length, "edge sounds:", edge_sounds, "edge sets:", edge_sets,"curve points:", curve_points)
-                            slider = Slider(hit_object, curve_type, slides, length, edge_sounds, edge_sets, curve_points)
-                            hit_object.has_slider = True
-                            hit_slider_list.append(hit_object)
-                            slider_list.append(slider)
-                            print("added slider to list")
+                        slider_switch = settings['sliders']
+                        if slider_switch == 49:
+                            if not hit_object.has_slider:
+                                # Get the curve points and curve type
+                                curve_points_curve_type = hit_object.addition[0]
+                                parts = curve_points_curve_type.split('|')
+                                curve_type = parts[0]
+                                curve_points = [tuple(map(int, part.split(':'))) for part in parts[1:]]
+                                # Get all other attributes
+                                slides = hit_object.addition[1] # Repeat count plus one
+                                length = hit_object.addition[2]
+                                edge_sounds = hit_object.addition[3] if len(hit_object.addition) > 3 else "None"
+                                edge_sets = hit_object.addition[4].split('|') if len(hit_object.addition) > 4 else ["0:0:0:0:"]
+                                print("curve type:", curve_type, "slides:", slides, "length:", length, "edge sounds:", edge_sounds, "edge sets:", edge_sets,"curve points:", curve_points)
+                                slider = Slider(hit_object, curve_type, slides, length, edge_sounds, edge_sets, curve_points)
+                                hit_object.has_slider = True
+                                hit_slider_list.append(hit_object)
+                                slider_list.append(slider)
+                                print("added slider to list")
                     elif bit_index == 2: #new combo
                         pass
                     elif bit_index == 3: #spinner
@@ -572,6 +583,9 @@ def recalculate_adjusted_position():
 
 # Initialize settings with default keybindings
 settings = load_settings_from_json(config_file_path)
+
+# Varibale if sliders used (48=enabled, 49=disabled)
+slider_switch = settings['sliders']
 
 def change_keybinding(key_binding):
     print(f"Press a key to set the new keybinding for {key_binding}")

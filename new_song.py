@@ -6,7 +6,7 @@ from tkinter import filedialog
 def rename_file(old_path, new_name, target_dir):
     try:
         new_path = os.path.join(target_dir, new_name)
-        os.rename(old_path, new_path)
+        os.replace(old_path, new_path)
         print(f"File '{old_path}' renamed to '{new_path}'.")
     except FileNotFoundError:
         print(f"File '{old_path}' not found.")
@@ -23,8 +23,8 @@ def main():
     root = tk.Tk()
     root.withdraw()  # Hide the root window
 
-    # Select file to rename
-    file_to_rename = filedialog.askopenfilename(title="Select File to Rename")
+    # Select file to play
+    file_to_rename = filedialog.askopenfilename(title="Select File to play")
     if file_to_rename:
         target_dir = os.path.dirname(os.path.abspath(__file__))  # Get directory of the script
         new_file_name = "beatmap.osz"
