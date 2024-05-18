@@ -1,7 +1,7 @@
 # Pygame OSU! Clone
 
 ## Description
-This project is a small school assignment aimed at learning the basics of Pygame. It's a clone of OSU! (osu.ppy.sh), a rhythm game. While development will cease after the presentation, the project is open for others to run and contribute to. Below, you'll find documentation and a startup guide.
+This project is a small school assignment aimed at learning the basics of Pygame. It's a clone of OSU! (osu.ppy.sh), a rhythm game. While development will cease after the presentation, the project is open for others to run and contribute to. Below, you'll find a startup guide while the documentation is in the github wiki.
 
 ## How to Run
 ### Prerequisites
