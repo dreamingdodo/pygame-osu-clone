@@ -8,7 +8,14 @@ import requests
 from bs4 import BeautifulSoup
 import shutil
 import json
+import psutil
+import time
 
+log_file = open("performance_log.txt", "w")
+log_file.write("Time, FPS, CPU Usage (%), Memory Usage (MB)\n")
+
+# Get the current process
+process = psutil.Process(os.getpid())
 
 pygame.init()
 
@@ -432,7 +439,7 @@ def display_names_menu(window, names, scroll_offset):
     return name_rects
 
 
-def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, miss_sound):
+def handle_mouse_click(event, cursor_instance, hit_objects_list, current_game_time, OverallDifficulty, hit_sound, sorted_hit_object_list, miss_sound):
     if event.type == pygame.MOUSEBUTTONDOWN:
         if event.button == settings['left_click'] or event.button == settings['right_click']:  # Check if left mouse button clicked
             mouse_pos = pygame.mouse.get_pos()
@@ -443,7 +450,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(current_time, OverallDifficulty, sorted_hit_object_list, hit_sound, miss_sound)
+                        hit_object.hit(current_game_time, OverallDifficulty, sorted_hit_object_list, hit_sound, miss_sound)
                         break
                     else:
                         #print(distance)
@@ -458,7 +465,7 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     distance = check_hit_circle(hit_object)
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
-                        hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_sound= hit_sound, miss_sound= miss_sound)
+                        hit_object.hit(hit_time=current_game_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_sound= hit_sound, miss_sound= miss_sound)
                     else:
                         print(distance)
             
@@ -481,7 +488,7 @@ def calculate_angle(CENTER, current, initial):
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations):
+def main_game_logic(hit_objects_list, event, current_game_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations):
     for hit_object in hit_objects_list:
         if hit_object.visible:
             for bit_index in range(8):
@@ -534,9 +541,9 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
                         pass
 
     for spinner in spinner_list:
-        #print("Spinner Time: {spinner.time}, End Time: {spinner.endtime}, Current Time: {current_time}")
-        if spinner.time <= current_time:
-            if int(spinner.endtime) >= current_time:
+        #print("Spinner Time: {spinner.time}, End Time: {spinner.endtime}, Current Time: {current_game_time}")
+        if spinner.time <= current_game_time:
+            if int(spinner.endtime) >= current_game_time:
                 pygame.draw.circle(window, (255, 255, 255), CENTER, 50)
                 cursor_pos = pygame.mouse.get_pos()
                 prev_angle, num_rotations = spinner.count_rotations(cursor_pos, CENTER, prev_angle, num_rotations)
@@ -550,9 +557,9 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
     
     for slider in slider_list:
         if not hasattr(slider, 'endtime_absolute'):
-            slider.calculate_slider_endtime(current_timing_point, SliderMultiplier, current_time)
-        if slider.endtime_absolute <= current_time:
-            print(slider.endtime_relative, current_time)
+            slider.calculate_slider_endtime(current_timing_point, SliderMultiplier, current_game_time)
+        if slider.endtime_absolute <= current_game_time:
+            print(slider.endtime_relative, current_game_time)
             slider_list.remove(slider)
             print("removed slider from list")
         else:
@@ -616,7 +623,7 @@ def main():
     clock = pygame.time.Clock()
     running = False  # Start with menu loop
     music_playing = False
-    current_time = 0  # Initialize current_time
+    current_game_time = 0  # Initialize current_game_time
     start_time = 0  # Variable to store the time when the game starts running
     initial_pos = (0, 0)
     CENTER = (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2)
@@ -629,7 +636,7 @@ def main():
 
     while True:
         if not running:  # Display menu if not running
-            current_time = 0
+            current_game_time = 0
             song_rects = display_menu(window)  # Get bounding rectangles and corresponding song texts
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -730,12 +737,12 @@ def main():
                 pygame.mixer.music.play()
                 music_playing = True
             
-            if current_time and not running:
-                current_time = 0
+            if current_game_time and not running:
+                current_game_time = 0
 
-            current_time = pygame.time.get_ticks() - start_time
+            current_game_time = pygame.time.get_ticks() - start_time
 
-            if last_time < current_time: # Finish game
+            if last_time < current_game_time: # Finish game
                 end_score = get_current_score()
                 while True:
                     stop = endscreen(end_score, song)
@@ -754,7 +761,7 @@ def main():
             cursor_instance.update_position(new_cursor_position)
 
             # Update the current timing point
-            current_timing_point = TimingPoints.get_current_timing_point(current_time, timing_points_list)
+            current_timing_point = TimingPoints.get_current_timing_point(current_game_time, timing_points_list)
 
             # Rendering
             window.fill((0, 0, 0))  # Clear the screen
@@ -770,21 +777,21 @@ def main():
                         music_playing = False
                         running = False
 
-                handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, OverallDifficulty, hit_sound, sorted_hit_object_list, miss_sound)
+                handle_mouse_click(event, cursor_instance, hit_objects_list, current_game_time, OverallDifficulty, hit_sound, sorted_hit_object_list, miss_sound)
 
             # do hit objects
             for hit_object in hit_objects_list:
-                hit_object.update(current_time, miss_sound)
+                hit_object.update(current_game_time, miss_sound)
                 hit_object.draw(window, OSU_HEIGHT, OSU_HEIGHT, VERTICAL_SHIFT)
 
-            main_logic_return = main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations)
+            main_logic_return = main_game_logic(hit_objects_list, event, current_game_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations)
             
             if main_logic_return is not None:
                 prev_angle, num_rotations = main_logic_return
                 draw_text(f"Rotations: {abs(num_rotations)}", font, TEXT_COL, 50, 100)
 
             # display current time in ms
-            current_time_str = "Current Time: {} ms".format(current_time)
+            current_time_str = "Current Time: {} ms".format(current_game_time)
             draw_text(current_time_str, font, TEXT_COL, 50, 50)
 
             # display current score
@@ -794,10 +801,18 @@ def main():
             # Update the display
             pygame.display.flip()
 
+            # Log the performance metrics
+            fps = int(clock.get_fps())
+            cpu_usage = process.cpu_percent()
+            memory_info = process.memory_info()
+            memory_usage = memory_info.rss / (1024 * 1024)
+            log_file.write(f"{current_game_time}, {fps}, {cpu_usage}, {memory_usage}\n")
+            log_file.flush()
+
         clock.tick(60)
 
 if __name__ == "__main__":
     main()
 
 pygame.quit()
-
+log_file.close()
