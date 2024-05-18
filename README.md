@@ -44,7 +44,7 @@ This project requires the following packages:
 - ~~Save keybindings~~
 - ~~Sliders an option to enable (off by default)~~
 - ~~Miss sound~~
-- Write technical documentation
+- ~~Write technical documentation~~
 - ~~Spinner points~~
 
 ## Credits
