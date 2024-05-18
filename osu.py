@@ -132,8 +132,11 @@ def get_current_score():
 
 def extract_osz(filename):
     # Extract the .osz file
-    with zipfile.ZipFile(filename, 'r') as zip_ref:
-        zip_ref.extractall('beatmaps')
+    try:
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            zip_ref.extractall('beatmaps')
+    except:
+        raise MyError("There is no Beatmap file. Follow instructions from Github.")
 
 def parse_osu_file(filename, name):
     if not os.path.exists(filename):
