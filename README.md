@@ -51,4 +51,5 @@ This project requires the following packages:
 - AI-assisted parts of the code are marked with comments.
 - Preinstalled assets are sourced from [this skin](https://osu.ppy.sh/community/forums/topics/1491596).
 - Downloading Beatmaps from beatconnect.io
+- Preinstalled Beatmap: [Musubime (TV Size)](https://osu.ppy.sh/beatmapsets/2040401#osu/4256416)
 
