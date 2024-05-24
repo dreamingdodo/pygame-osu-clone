@@ -462,8 +462,10 @@ def handle_mouse_click(event, cursor_instance, hit_objects_list, current_time, O
                     # Check if the distance is less than or equal to the hit object radius
                     if distance <= hit_object.circle_size:
                         hit_object.hit(hit_time=current_time, OverallDifficulty = OverallDifficulty, sorted_hit_object_list= sorted_hit_object_list, hit_sound= hit_sound, miss_sound= miss_sound)
+                        break
                     else:
-                        print(distance)
+                        pass
+                        #print(distance)
             
 # Make sure its a local file
 def restart_program():
@@ -761,6 +763,8 @@ def main():
 
             # Rendering
             window.fill((0, 0, 0))  # Clear the screen
+
+            pygame.draw.circle(window, (200, 200, 200), pygame.mouse.get_pos(), 5)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:

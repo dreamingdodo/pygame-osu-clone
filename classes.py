@@ -227,7 +227,6 @@ class HitObject(pygame.sprite.Sprite):
             screen_position = self.adjusted_position
             pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_size) # Draw hit object
             pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_radius, 1) # Draw approach circle
-            pygame.draw.circle(window, (200, 200, 200), pygame.mouse.get_pos(), 5)
 
     def get_screen_position(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):
         # Calculate the position of the hit object within the window
