@@ -600,6 +600,8 @@ slider_switch = settings['sliders']
 
 def change_keybinding(key_binding):
     print(f"Press a key to set the new keybinding for {key_binding}")
+    draw_text("Press key", font, TEXT_COL, 300, 100)
+    pygame.display.flip()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
@@ -692,10 +694,10 @@ def main():
                                         break
                                 elif names_event.type == pygame.MOUSEWHEEL:
                                     if names_event.y > 0:
-                                        print("scrolled up")
+                                        #print("scrolled up")
                                         scroll_offset -= 1  # Scroll up
                                     elif names_event.y < 0:
-                                        print("scrolled down")
+                                        #print("scrolled down")
                                         scroll_offset += 1  # Scroll down
                                 elif names_event.type == pygame.MOUSEBUTTONDOWN:
                                     if names_event.button == 1:
