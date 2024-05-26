@@ -313,6 +313,9 @@ SCORES_FILE = "beatmap_scores.json"
 # Make the dir's work on both windows and linux
 assets_dir = "assets"
 
+# Spinner height and width
+spinner_width, spinner_height = 300, 300
+
 # Load the sounds
 hit_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'drum-hitnormal.wav'))
 bye_sound = pygame.mixer.Sound(os.path.join(assets_dir, 'seeya.ogg'))
@@ -488,7 +491,7 @@ def calculate_angle(CENTER, current, initial):
 def distance(point1, point2):
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
 
-def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations):
+def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations, spinner_texture, top_left_x, top_left_y):
     for hit_object in hit_objects_list:
         if hit_object.visible:
             for bit_index in range(8):
@@ -544,7 +547,8 @@ def main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, curr
         #print("Spinner Time: {spinner.time}, End Time: {spinner.endtime}, Current Time: {current_time}")
         if spinner.time <= current_time:
             if int(spinner.endtime) >= current_time:
-                pygame.draw.circle(window, (255, 255, 255), CENTER, 50)
+                #pygame.draw.circle(window, (255, 255, 255), CENTER, 50)
+                window.blit(spinner_texture, (top_left_x, top_left_y))
                 cursor_pos = pygame.mouse.get_pos()
                 prev_angle, num_rotations = spinner.count_rotations(cursor_pos, CENTER, prev_angle, num_rotations)
                 return prev_angle, num_rotations
@@ -631,6 +635,11 @@ def main():
     extract_osz('beatmap.osz')
     prev_angle = None
     num_rotations = 0
+    hit_circle_texture, slider_texture, spinner_texture = load_textures()
+    spinner_texture = pygame.transform.scale(spinner_texture, (spinner_width, spinner_height))
+    texture_width, texture_height = spinner_texture.get_size()
+    top_left_x = CENTER[0] - texture_width // 2
+    top_left_y = CENTER[1] - texture_height // 2
 
     while True:
         if not running:  # Display menu if not running
@@ -784,7 +793,7 @@ def main():
                 hit_object.update(current_time, miss_sound)
                 hit_object.draw(window, OSU_HEIGHT, OSU_HEIGHT, VERTICAL_SHIFT)
 
-            main_logic_return = main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations)
+            main_logic_return = main_game_logic(hit_objects_list, event, current_time, initial_pos, dt, current_timing_point, CENTER, SliderMultiplier, prev_angle, num_rotations, spinner_texture, top_left_x, top_left_y)
             
             if main_logic_return is not None:
                 prev_angle, num_rotations = main_logic_return
