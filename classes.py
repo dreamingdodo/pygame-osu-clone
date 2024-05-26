@@ -144,7 +144,7 @@ def calculate_score(self, hit_time, OverallDifficulty):
 
 class HitObject(pygame.sprite.Sprite):
     
-    def __init__(self, position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
+    def __init__(self, position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, hit_circle_texture, addition=None, sliderType=None, curvePoints=None, slides=None, length=None, edgeSounds=None, edgeSets=None, endTime=None, washit=None, wasmissed=None):
         super().__init__()
         self.position = position
         self.adjusted_position = self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT)
@@ -163,11 +163,14 @@ class HitObject(pygame.sprite.Sprite):
         self.washit = False
         self.wasmissed = False
         self.circle_size = self.calculate_circle_size(CircleSize)
+        self.circle_size_tupel = (2 * self.circle_size, 2 * self.circle_size)
+        self.texture = pygame.transform.scale(hit_circle_texture, self.circle_size_tupel)
         self.circle_radius = self.circle_size + 30  # Initial radius of the circle
         self.APPEARANCE_TIME_BEFORE_HIT = self.calculate_appearance_time(ApproachRate)
         self.circle_speed = self.calculate_circle_speed()  # Speed at which the circle radius reduces
-        self.image = pygame.Surface((2 * self.circle_radius, 2 * self.circle_radius))
+        self.image = pygame.Surface(self.circle_size_tupel, pygame.SRCALPHA)
         self.rect = self.image.get_rect(center=self.get_screen_position(window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT))
+        self.image.blit(self.texture, (0, 0))
         self.has_spinner = False
         self.has_slider = False
         self.score = 0
@@ -225,7 +228,7 @@ class HitObject(pygame.sprite.Sprite):
         # If the hit object is visible, draw it on the screen
         if self.visible:
             screen_position = self.adjusted_position
-            pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_size) # Draw hit object
+            window.blit(self.image, self.rect.topleft) # Draw hit object
             pygame.draw.circle(window, (255, 255, 255), screen_position, self.circle_radius, 1) # Draw approach circle
 
     def get_screen_position(self, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT):

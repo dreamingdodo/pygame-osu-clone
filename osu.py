@@ -216,6 +216,8 @@ def start_parsing(name):
         raise MyError(SliderMultiplier)
     #print(difficulty_data)
     
+    hit_circle_texture, slider_texture, spinner_texture = load_textures()
+
     timing_points_list = []
     # Extract a list of timing_points
     for line in timing_points:
@@ -245,7 +247,7 @@ def start_parsing(name):
         hitSound = int(components[4])
         addition = components[5:]  # The rest of the components are specific to the type of hit object
         position = (x, y)
-        hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, addition))
+        hit_objects_list.append(HitObject(position, time, type, hitSound, ApproachRate, CircleSize, window, OSU_HEIGHT, OSU_WIDTH, VERTICAL_SHIFT, hit_circle_texture, addition))
         #print(line)
     
     # sort a list of hit objects according to their time
@@ -629,8 +631,6 @@ def main():
     extract_osz('beatmap.osz')
     prev_angle = None
     num_rotations = 0
-    
-    hit_circle_texture, slider_texture, spinner_texture = load_textures()
 
     while True:
         if not running:  # Display menu if not running
